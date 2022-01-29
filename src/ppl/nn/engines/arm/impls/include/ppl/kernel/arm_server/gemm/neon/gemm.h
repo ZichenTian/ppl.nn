@@ -37,13 +37,38 @@ class gemm_C_type {
 public:
     enum {
         EMPTY    = 0,
-        // SCALAR   = 1,
-        // VECTOR_H = 2,
-        // VECTOR_W = 3,
+        SCALAR   = 1,
+        VECTOR_H = 2,
+        VECTOR_W = 3,
         MATRIX   = 4,
     };
 };
 typedef uint32_t gemm_C_type_t;
+
+uint64_t gemm_ndarray_calc_buffer_size(
+    const ppl::common::datatype_t data_type,
+    const int64_t M,
+    const int64_t N,
+    const int64_t K);
+
+ppl::common::RetCode gemm_ndarray(
+    const void *A,
+    const void *B,
+    const void *C,
+    const ppl::common::datatype_t data_type,
+    const int64_t M,
+    const int64_t N,
+    const int64_t K,
+    const int64_t lda,
+    const int64_t ldb,
+    const int64_t ldc,
+    const int64_t transA,
+    const int64_t transB,
+    const float alpha,
+    const float beta,
+    const int64_t ldy,
+    const gemm_C_type_t c_type,
+    void *Y);
 
 #ifdef PPLNN_USE_ARMV8_2_FP16
 size_t ppl_arm_server_kernel_fp16_gemm_get_buffer_size(
