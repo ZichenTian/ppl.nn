@@ -15,39 +15,24 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef __ST_PPL_KERNEL_ARM_SERVER_GEMM_NEON_OUTER_GEMM_NDARRAY_OUTER_H_
-#define __ST_PPL_KERNEL_ARM_SERVER_GEMM_NEON_OUTER_GEMM_NDARRAY_OUTER_H_
+#ifndef __ST_PPL_KERNEL_ARM_SERVER_GEMM_NEON_KERNEL_FP32_SGEMM_NDARRAY_KERNEL_H_
+#define __ST_PPL_KERNEL_ARM_SERVER_GEMM_NEON_KERNEL_FP32_SGEMM_NDARRAY_KERNEL_H_
 
 #include "ppl/kernel/arm_server/common/internal_include.h"
-#include "ppl/kernel/arm_server/gemm/neon/gemm.h"
 
 namespace ppl { namespace kernel { namespace arm_server { namespace neon {
 
-uint64_t gemm_ndarray_common_outer_calc_buffer_elemsize(
-    const int64_t M,
-    const int64_t N,
-    const int64_t K);
+typedef void (*sgemm_ndarray_kernel_func_t)(
+    const float* A, 
+    const float* B, 
+    const int K, 
+    const int lda, 
+    const int ldb, 
+    const int ldc, 
+    float* C);
 
-template <typename eT>
-ppl::common::RetCode gemm_ndarray_common_outer(
-    const eT* A,
-    const eT* B,
-    const eT* C,
-    const int64_t M,
-    const int64_t N,
-    const int64_t K,
-    const int64_t lda,
-    const int64_t ldb,
-    const int64_t ldc,
-    const int64_t transA,
-    const int64_t transB,
-    const float alpha,
-    const float beta,
-    const int64_t ldy,
-    const gemm_C_type_t c_type,
-    void* temp,
-    eT* Y);
+extern const sgemm_ndarray_kernel_func_t sgemm_ndarray_kernel_tn_max8x12_func_table[2][8][3];
 
-}}}} // namespace ppl::kernel::arm_server::neon
+}}}}
 
-#endif // !__ST_PPL_KERNEL_ARM_SERVER_GEMM_NEON_OUTER_GEMM_NDARRAY_OUTER_H_
+#endif  // !__ST_PPL_KERNEL_ARM_SERVER_GEMM_NEON_KERNEL_FP32_SGEMM_NDARRAY_KERNEL_H_

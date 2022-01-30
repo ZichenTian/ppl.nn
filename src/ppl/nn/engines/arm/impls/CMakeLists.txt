@@ -79,6 +79,15 @@ target_include_directories(test_gemm
 target_compile_options(test_gemm PRIVATE ${PPL_KERNEL_ARM_SERVER_COMPILE_OPTIONS})
 target_compile_definitions(test_gemm PRIVATE ${PPL_KERNEL_ARM_SERVER_COMPILE_DEFINITIONS})
 
+add_executable(test_gemm_kernel test/test_gemm_kernel.cpp)
+target_link_libraries(test_gemm_kernel PRIVATE ${PPL_KERNEL_ARM_SERVER_LINK_LIBRARIES} PPLKernelArmServer)
+target_include_directories(test_gemm_kernel 
+    PUBLIC ${PPL_KERNEL_ARM_SERVER_INCLUDE_DIRECTORIES}
+    PRIVATE ${PPLNN_FRAMEWORK_INCLUDE_DIRECTORIES}
+    PRIVATE ${PPLNN_ARM_ENGINE_INCLUDE_DIRECTORIES})
+target_compile_options(test_gemm_kernel PRIVATE ${PPL_KERNEL_ARM_SERVER_COMPILE_OPTIONS})
+target_compile_definitions(test_gemm_kernel PRIVATE ${PPL_KERNEL_ARM_SERVER_COMPILE_DEFINITIONS})
+
 if(PPLNN_INSTALL)
     install(TARGETS PPLKernelArmServer ARCHIVE DESTINATION lib)
 endif()

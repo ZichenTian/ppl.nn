@@ -47,6 +47,7 @@ static ppl::common::RetCode gemm_ndarray_common(
     const float beta,
     const int64_t ldy,
     const gemm_C_type_t c_type,
+    void* temp,
     eT* Y)
 {
     if (A == nullptr || B == nullptr || Y == nullptr) {
@@ -70,7 +71,7 @@ static ppl::common::RetCode gemm_ndarray_common(
         return ppl::common::RC_INVALID_VALUE;
     }
 
-    return gemm_ndarray_common_outer<eT>(A, B, C, M, N, K, lda, ldb, ldc, transA, transB, alpha, beta, ldy, c_type, Y);
+    return gemm_ndarray_common_outer<eT>(A, B, C, M, N, K, lda, ldb, ldc, transA, transB, alpha, beta, ldy, c_type, temp, Y);
 }
 
 ppl::common::RetCode gemm_ndarray(
@@ -90,10 +91,11 @@ ppl::common::RetCode gemm_ndarray(
     const float beta,
     const int64_t ldy,
     const gemm_C_type_t c_type,
+    void* temp,
     void* Y)
 {
     switch (data_type) {
-        case ppl::common::DATATYPE_FLOAT32: return gemm_ndarray_common<float>((const float*)A, (const float*)B, (const float*)C, M, N, K, lda, ldb, ldc, transA, transB, alpha, beta, ldy, c_type, (float*)Y);
+        case ppl::common::DATATYPE_FLOAT32: return gemm_ndarray_common<float>((const float*)A, (const float*)B, (const float*)C, M, N, K, lda, ldb, ldc, transA, transB, alpha, beta, ldy, c_type, temp, (float*)Y);
         default: break;
     }
 
