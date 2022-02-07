@@ -23,7 +23,7 @@
 #endif
 
 template<>
-void sgemm_ndarray_tn_max8x12_kernel_func<INIT_T(), M_BLOCK(), N_BLOCK()>(
+void sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A(), PREFETCH_B(), INIT_T(), M_BLOCK(), N_BLOCK()>(
     const float* A, 
     const float* B, 
     const int32_t K, 
@@ -32,17 +32,34 @@ void sgemm_ndarray_tn_max8x12_kernel_func<INIT_T(), M_BLOCK(), N_BLOCK()>(
     const int32_t ldc, 
     float* C)
 {
-#define IF_M_GT(M, INSTRUCTION) ".if " PPL_ARM_SERVER_KERNEL_STR(M_BLOCK()) " > " #M "\n\t  " INSTRUCTION ".endif\n\t"
-#define IF_N_GT(N, INSTRUCTION) ".if " PPL_ARM_SERVER_KERNEL_STR(N_BLOCK()) " > " #N "\n\t  " INSTRUCTION ".endif\n\t"
+#define IF_M_GT(M, INSTRUCTION) ".if " PPL_ARM_SERVER_KERNEL_STR(M_BLOCK()) " > " #M "\n\t" INSTRUCTION ".endif\n\t"
+#define IF_N_GT(N, INSTRUCTION) ".if " PPL_ARM_SERVER_KERNEL_STR(N_BLOCK()) " > " #N "\n\t" INSTRUCTION ".endif\n\t"
 #define IF_MN_GT(M, N, INSTRUCTION) \
-    ".if " PPL_ARM_SERVER_KERNEL_STR(M_BLOCK()) " > " #M "\n\t  " \
-    ".if " PPL_ARM_SERVER_KERNEL_STR(N_BLOCK()) " > " #N "\n\t  " \
+    ".if " PPL_ARM_SERVER_KERNEL_STR(M_BLOCK()) " > " #M "\n\t" \
+    ".if " PPL_ARM_SERVER_KERNEL_STR(N_BLOCK()) " > " #N "\n\t" \
     INSTRUCTION \
     ".endif\n\t" \
+    ".endif\n\t"
+#define IF_PFC_A_M_GT(M, INSTRUCTION) \
+    ".if " PPL_ARM_SERVER_KERNEL_STR(PREFETCH_A()) " > 0\n\t" \
+    ".if " PPL_ARM_SERVER_KERNEL_STR(M_BLOCK()) " > " #M "\n\t" \
+    INSTRUCTION \
     ".endif\n\t" \
+    ".endif\n\t"
+#define IF_PFC_B_N_GT(N, INSTRUCTION) \
+    ".if " PPL_ARM_SERVER_KERNEL_STR(PREFETCH_B()) " > 0\n\t" \
+    ".if " PPL_ARM_SERVER_KERNEL_STR(N_BLOCK()) " > " #N "\n\t" \
+    INSTRUCTION \
+    ".endif\n\t" \
+    ".endif\n\t"
 
     const int32_t head = K % 2;
     const int32_t body = K - head;
+
+    const int32_t prefetch_line_a = 8;
+    const int32_t prefetch_line_b = 8;
+    const float* prefetch_a_ptr = A + prefetch_line_a * lda;
+    const float* prefetch_b_ptr = B + prefetch_line_b * ldb;
 
     asm volatile(
         // init C
@@ -123,10 +140,16 @@ void sgemm_ndarray_tn_max8x12_kernel_func<INIT_T(), M_BLOCK(), N_BLOCK()>(
         IF_MN_GT(2,  0,  "fmla      v14.4s,     v2.4s,      v0.s[2]     \n\t")
         IF_MN_GT(3,  0,  "fmla      v17.4s,     v2.4s,      v0.s[3]     \n\t")
 
+        IF_PFC_A_M_GT(0, "prfm      pldl1strm,  [%[pfc_a],  #0]         \n\t")
+        IF_PFC_A_M_GT(0, "add       %[pfc_a],   %[pfc_a],   %[lda]      \n\t")
+
         IF_MN_GT(0,  1,  "fmla      v9.4s,      v3.4s,      v0.s[0]     \n\t")
         IF_MN_GT(1,  1,  "fmla      v12.4s,     v3.4s,      v0.s[1]     \n\t")
         IF_MN_GT(2,  1,  "fmla      v15.4s,     v3.4s,      v0.s[2]     \n\t")
         IF_MN_GT(3,  1,  "fmla      v18.4s,     v3.4s,      v0.s[3]     \n\t")
+
+        IF_PFC_B_N_GT(0, "prfm      pldl1strm,  [%[pfc_b],  #0]         \n\t")
+        IF_PFC_B_N_GT(0, "add       %[pfc_b],   %[pfc_b],   %[ldb]      \n\t")
 
         IF_MN_GT(0,  2,  "fmla      v10.4s,     v4.4s,      v0.s[0]     \n\t")
         IF_MN_GT(1,  2,  "fmla      v13.4s,     v4.4s,      v0.s[1]     \n\t")
@@ -172,10 +195,16 @@ void sgemm_ndarray_tn_max8x12_kernel_func<INIT_T(), M_BLOCK(), N_BLOCK()>(
         IF_MN_GT(2,  0,  "fmla      v14.4s,     v2.4s,      v0.s[2]     \n\t")
         IF_MN_GT(3,  0,  "fmla      v17.4s,     v2.4s,      v0.s[3]     \n\t")
 
+        IF_PFC_A_M_GT(0, "prfm      pldl1strm,  [%[pfc_a],  #0]         \n\t")
+        IF_PFC_A_M_GT(0, "add       %[pfc_a],   %[pfc_a],   %[lda]      \n\t")
+
         IF_MN_GT(0,  1,  "fmla      v9.4s,      v3.4s,      v0.s[0]     \n\t")
         IF_MN_GT(1,  1,  "fmla      v12.4s,     v3.4s,      v0.s[1]     \n\t")
         IF_MN_GT(2,  1,  "fmla      v15.4s,     v3.4s,      v0.s[2]     \n\t")
         IF_MN_GT(3,  1,  "fmla      v18.4s,     v3.4s,      v0.s[3]     \n\t")
+
+        IF_PFC_B_N_GT(0, "prfm      pldl1strm,  [%[pfc_b],  #0]         \n\t")
+        IF_PFC_B_N_GT(0, "add       %[pfc_b],   %[pfc_b],   %[ldb]      \n\t")
 
         IF_MN_GT(0,  2,  "fmla      v10.4s,     v4.4s,      v0.s[0]     \n\t")
         IF_MN_GT(1,  2,  "fmla      v13.4s,     v4.4s,      v0.s[1]     \n\t")
@@ -214,10 +243,16 @@ void sgemm_ndarray_tn_max8x12_kernel_func<INIT_T(), M_BLOCK(), N_BLOCK()>(
         IF_MN_GT(2,  0,  "fmla      v14.4s,     v5.4s,      v0.s[2]     \n\t")
         IF_MN_GT(3,  0,  "fmla      v17.4s,     v5.4s,      v0.s[3]     \n\t")
 
+        IF_PFC_A_M_GT(0, "prfm      pldl1strm,  [%[pfc_a],  #0]         \n\t")
+        IF_PFC_A_M_GT(0, "add       %[pfc_a],   %[pfc_a],   %[lda]      \n\t")
+
         IF_MN_GT(0,  1,  "fmla      v9.4s,      v6.4s,      v0.s[0]     \n\t")
         IF_MN_GT(1,  1,  "fmla      v12.4s,     v6.4s,      v0.s[1]     \n\t")
         IF_MN_GT(2,  1,  "fmla      v15.4s,     v6.4s,      v0.s[2]     \n\t")
         IF_MN_GT(3,  1,  "fmla      v18.4s,     v6.4s,      v0.s[3]     \n\t")
+
+        IF_PFC_B_N_GT(0, "prfm      pldl1strm,  [%[pfc_b],  #0]         \n\t")
+        IF_PFC_B_N_GT(0, "add       %[pfc_b],   %[pfc_b],   %[ldb]      \n\t")
 
         IF_MN_GT(0,  2,  "fmla      v10.4s,     v7.4s,      v0.s[0]     \n\t")
         IF_MN_GT(1,  2,  "fmla      v13.4s,     v7.4s,      v0.s[1]     \n\t")
@@ -359,6 +394,8 @@ void sgemm_ndarray_tn_max8x12_kernel_func<INIT_T(), M_BLOCK(), N_BLOCK()>(
         , [ldc]"r"(ldc * sizeof(float))
         , [head]"r"(head)
         , [body]"r"(body)
+        , [pfc_a]"r"(prefetch_a_ptr)
+        , [pfc_b]"r"(prefetch_b_ptr)
         :"memory", "cc"
         , "x15" // temp store ptr_c
         , "v0", "v1"    // A data

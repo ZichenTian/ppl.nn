@@ -31,7 +31,7 @@ typedef void (*sgemm_ndarray_kernel_func_t)(
     const int ldc, 
     float* C);
 
-extern const sgemm_ndarray_kernel_func_t sgemm_ndarray_kernel_tn_max8x12_func_table[2][8][3];
+extern const sgemm_ndarray_kernel_func_t sgemm_ndarray_kernel_tn_max8x12_func_table[2][2][2][8][3];
 
 }}}}
 

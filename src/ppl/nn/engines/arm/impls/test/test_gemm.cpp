@@ -100,9 +100,15 @@ void test_sgemm(
         sgemm_ref(A, B, M, N, K, K, N, N, C_ref);
     }
 
+    auto start          = std::chrono::system_clock::now();
+
     // ppl::kernel::arm_server::neon::gemm_fp32(A, B, nullptr, C, temp, M, N, K, K, N, 0, N, 1, 0, sgemm_m1, sgemm_n1, sgemm_k1, sgemm_m3, sgemm_k3);
     // sgemm_algo1(A, B, K, N, M, N, K, N, temp, C);
     ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT32, M, N, K, K, N, 0, 0, 0, 1.0f, 0, N, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, temp, C);
+
+    auto end       = std::chrono::system_clock::now();
+    auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    double time    = time_diff.count() / 1e6;
 
     if (diff) {
         int64_t err_cnt               = 0;
@@ -123,16 +129,16 @@ void test_sgemm(
         }
     }
 
-    const int64_t loops = 10;
-    auto start          = std::chrono::system_clock::now();
+    const int64_t loops = std::max(int32_t(1.0f / time), 1);
+    start          = std::chrono::system_clock::now();
     for (int64_t i = 0; i < loops; i++) {
         // sgemm_algo1(A, B, K, N, M, N, K, N, temp, C);
         // ppl::kernel::arm_server::neon::gemm_fp32(A, B, nullptr, C, temp, M, N, K, K, N, 0, N, 1, 0, sgemm_m1, sgemm_n1, sgemm_k1, sgemm_m3, sgemm_k3);
         ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT32, M, N, K, K, N, 0, 0, 0, 1.0f, 0, N, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, temp, C);
     }
-    auto end       = std::chrono::system_clock::now();
-    auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    double time    = time_diff.count() / 1000.f / loops;
+    end       = std::chrono::system_clock::now();
+    time_diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    time    = time_diff.count() / 1000.f / loops;
 
     const double gops  = M * N * K * 2 / 1e9;
     const double speed = gops / (time / 1000);
@@ -148,9 +154,10 @@ void test_sgemm(
 
 int main(int argc, char* argv[])
 {
-    test_sgemm(1024, 1152, 1024, true);
-    test_sgemm(1024, 1024, 1024, true);
-    test_sgemm(255, 127, 33, true);
-    test_sgemm(5, 257, 193, true);
+    const bool diff = false;
+    test_sgemm(1024, 1152, 1024, diff);
+    test_sgemm(1024, 1024, 1024, diff);
+    test_sgemm(255, 127, 33, diff);
+    test_sgemm(5, 257, 193, diff);
     return 0;
 }

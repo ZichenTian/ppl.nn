@@ -19,7 +19,7 @@
 
 namespace ppl { namespace kernel { namespace arm_server { namespace neon {
 
-template <int32_t init_t, int32_t m_block, int32_t n_block>
+template <int32_t prefetch_a, int32_t prefetch_b, int32_t init_t, int32_t m_block, int32_t n_block>
 void sgemm_ndarray_tn_max8x12_kernel_func(
     const float* A, 
     const float* B, 
@@ -29,272 +29,150 @@ void sgemm_ndarray_tn_max8x12_kernel_func(
     const int32_t ldc, 
     float* C);
 
-#define INIT_T()    0   // init C as 0
-    #define M_BLOCK()   1
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   2
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   3
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   4
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   5
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   6
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   7
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   8
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-#undef  INIT_T
-#define INIT_T()    1   // init C by load
-    #define M_BLOCK()   1
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   2
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   3
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   4
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   5
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   6
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   7
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-    #define M_BLOCK()   8
-        #define N_BLOCK()   1
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   2
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-        #define N_BLOCK()   3
-            #include "sgemm_ndarray_tn_max8x12_kernel.inc"
-        #undef  N_BLOCK
-    #undef  M_BLOCK
-#undef  INIT_T
+#define PREFETCH_A()    0   // not prefetch A
+    #define PREFETCH_B()    0   // not prefetch B
+        #define INIT_T()    0   // init C as 0
+            #include "sgemm_ndarray_tn_max8x12_kernel_generate.inc"
+        #undef  INIT_T
+        #define INIT_T()    1   // init C by load
+            #include "sgemm_ndarray_tn_max8x12_kernel_generate.inc"
+        #undef  INIT_T
+    #undef  PREFETCH_B
+    #define PREFETCH_B()    1   // prefetch B
+        #define INIT_T()    0   // init C as 0
+            #include "sgemm_ndarray_tn_max8x12_kernel_generate.inc"
+        #undef  INIT_T
+        #define INIT_T()    1   // init C by load
+            #include "sgemm_ndarray_tn_max8x12_kernel_generate.inc"
+        #undef  INIT_T
+    #undef  PREFETCH_B
+#undef  PREFETCH_A
+#define PREFETCH_A()    1   // prefetch A
+        #define PREFETCH_B()    0   // not prefetch B
+        #define INIT_T()    0   // init C as 0
+            #include "sgemm_ndarray_tn_max8x12_kernel_generate.inc"
+        #undef  INIT_T
+        #define INIT_T()    1   // init C by load
+            #include "sgemm_ndarray_tn_max8x12_kernel_generate.inc"
+        #undef  INIT_T
+    #undef  PREFETCH_B
+    #define PREFETCH_B()    1   // prefetch B
+        #define INIT_T()    0   // init C as 0
+            #include "sgemm_ndarray_tn_max8x12_kernel_generate.inc"
+        #undef  INIT_T
+        #define INIT_T()    1   // init C by load
+            #include "sgemm_ndarray_tn_max8x12_kernel_generate.inc"
+        #undef  INIT_T
+    #undef  PREFETCH_B
+#undef  PREFETCH_A
 
-const sgemm_ndarray_kernel_func_t sgemm_ndarray_kernel_tn_max8x12_func_table[2][8][3] = {
+#define SGEMM_NDARRAY_TN_MAX8X12_KERNEL_FUNC_GROUP(PREFETCH_A, PREFETCH_B, INIT_T) \
+    {\
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 1, 1>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 1, 2>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 1, 3>, \
+    }, \
+    {\
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 2, 1>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 2, 2>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 2, 3>, \
+    }, \
+    {\
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 3, 1>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 3, 2>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 3, 3>, \
+    }, \
+    {\
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 4, 1>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 4, 2>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 4, 3>, \
+    }, \
+    {\
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 5, 1>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 5, 2>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 5, 3>, \
+    }, \
+    {\
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 6, 1>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 6, 2>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 6, 3>, \
+    }, \
+    {\
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 7, 1>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 7, 2>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 7, 3>, \
+    }, \
+    {\
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 8, 1>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 8, 2>, \
+        sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A, PREFETCH_B, INIT_T, 8, 3>, \
+    }, \
+
+const sgemm_ndarray_kernel_func_t sgemm_ndarray_kernel_tn_max8x12_func_table[2][2][2][8][3] = {
+#define PREFETCH_A      0
+{
+    #define PREFETCH_B      0
     {
+        #define INIT_T          0
         {
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 1, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 1, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 1, 3>, 
+            SGEMM_NDARRAY_TN_MAX8X12_KERNEL_FUNC_GROUP(PREFETCH_A, PREFETCH_B, INIT_T)
         }, 
+        #undef  INIT_T
+        #define INIT_T          1
         {
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 2, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 2, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 2, 3>, 
+            SGEMM_NDARRAY_TN_MAX8X12_KERNEL_FUNC_GROUP(PREFETCH_A, PREFETCH_B, INIT_T)
         }, 
-        {
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 3, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 3, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 3, 3>, 
-        }, 
-        {
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 4, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 4, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 4, 3>, 
-        }, 
-        {
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 5, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 5, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 5, 3>, 
-        }, 
-        {
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 6, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 6, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 6, 3>, 
-        }, 
-        {
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 7, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 7, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 7, 3>, 
-        }, 
-        {
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 8, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 8, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<0, 8, 3>, 
-        }, 
+        #undef  INIT_T
     }, 
+    #undef  PREFETCH_B
+    #define PREFETCH_B      1
     {
+        #define INIT_T          0
         {
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 1, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 1, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 1, 3>, 
+            SGEMM_NDARRAY_TN_MAX8X12_KERNEL_FUNC_GROUP(PREFETCH_A, PREFETCH_B, INIT_T)
         }, 
+        #undef  INIT_T
+        #define INIT_T          1
         {
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 2, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 2, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 2, 3>, 
+            SGEMM_NDARRAY_TN_MAX8X12_KERNEL_FUNC_GROUP(PREFETCH_A, PREFETCH_B, INIT_T)
         }, 
-        {
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 3, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 3, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 3, 3>, 
-        }, 
-        {
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 4, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 4, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 4, 3>, 
-        }, 
-        {
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 5, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 5, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 5, 3>, 
-        }, 
-        {
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 6, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 6, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 6, 3>, 
-        }, 
-        {
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 7, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 7, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 7, 3>, 
-        }, 
-        {
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 8, 1>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 8, 2>, 
-            sgemm_ndarray_tn_max8x12_kernel_func<1, 8, 3>, 
-        }, 
+        #undef  INIT_T
     }, 
+    #undef  PREFETCH_B
+}, 
+#undef  PREFETCH_A
+#define PREFETCH_A      1
+{
+    #define PREFETCH_B      0
+    {
+        #define INIT_T          0
+        {
+            SGEMM_NDARRAY_TN_MAX8X12_KERNEL_FUNC_GROUP(PREFETCH_A, PREFETCH_B, INIT_T)
+        }, 
+        #undef  INIT_T
+        #define INIT_T          1
+        {
+            SGEMM_NDARRAY_TN_MAX8X12_KERNEL_FUNC_GROUP(PREFETCH_A, PREFETCH_B, INIT_T)
+        }, 
+        #undef  INIT_T
+    }, 
+    #undef  PREFETCH_B
+    #define PREFETCH_B      1
+    {
+        #define INIT_T          0
+        {
+            SGEMM_NDARRAY_TN_MAX8X12_KERNEL_FUNC_GROUP(PREFETCH_A, PREFETCH_B, INIT_T)
+        }, 
+        #undef  INIT_T
+        #define INIT_T          1
+        {
+            SGEMM_NDARRAY_TN_MAX8X12_KERNEL_FUNC_GROUP(PREFETCH_A, PREFETCH_B, INIT_T)
+        }, 
+        #undef  INIT_T
+    }, 
+    #undef  PREFETCH_B
+}, 
+#undef  PREFETCH_A
 };
 
 }}}}

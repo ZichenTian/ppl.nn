@@ -27,8 +27,8 @@
 namespace ppl { namespace kernel { namespace arm_server { namespace neon {
 
 // outer blk for multi-thread
-#define M_OUTER_BLK() 128
-#define N_OUTER_BLK() 288
+#define M_OUTER_BLK() 256
+#define N_OUTER_BLK() 192
 
 #define K_INNER_BLK() 128
 #define N_INNER_BLK() 96
@@ -324,11 +324,14 @@ ppl::common::RetCode gemm_ndarray_common_outer(
     eT* Y)
 {
     const int64_t simd_w = 4;
+    const int64_t num_threads = PPL_OMP_MAX_THREADS();
+    std::vector<const float*> last_pack_a_ptr(num_threads, nullptr);
 
     PRAGMA_OMP_PARALLEL_FOR_COLLAPSE(2)
     for (int64_t m = 0; m < M; m += M_OUTER_BLK()) {
         for (int64_t n = 0; n < N; n += N_OUTER_BLK()) {
-            eT* temp_buffer     = (eT*)align_ptr((eT*)temp + temp_buffer_per_thread(K) * PPL_OMP_THREAD_ID(), 64);
+            const int64_t thread_id = PPL_OMP_THREAD_ID();
+            eT* temp_buffer     = (eT*)align_ptr((eT*)temp + temp_buffer_per_thread(K) * thread_id, 64);
             eT* temp_buffer_a   = temp_buffer;
             eT* temp_buffer_b   = temp_buffer_a + temp_buffer_a_elemsize(K);
             eT* temp_buffer_dst = temp_buffer_b + temp_buffer_b_elemsize(K);
@@ -336,7 +339,10 @@ ppl::common::RetCode gemm_ndarray_common_outer(
             const int64_t m_eff = min(M - m, (int64_t)M_OUTER_BLK());
             const int64_t n_eff = min(N - n, (int64_t)N_OUTER_BLK());
             const eT* p_src_a   = transA ? A + m : A + m * lda;
-            gemm_ndarray_common_outer_pack_at<eT>(p_src_a, m_eff, K, lda, transA, temp_buffer_a);
+            if (last_pack_a_ptr[thread_id] != p_src_a) {
+                gemm_ndarray_common_outer_pack_at<eT>(p_src_a, m_eff, K, lda, transA, temp_buffer_a);
+                last_pack_a_ptr[thread_id] = p_src_a;
+            }
 
             for (int64_t nn = 0; nn < n_eff; nn += N_INNER_BLK()) {
                 const int64_t nn_eff = min(n_eff - nn, (int64_t)N_INNER_BLK());
@@ -354,10 +360,13 @@ ppl::common::RetCode gemm_ndarray_common_outer(
                             const int64_t n_kernel_len = min(nn_eff - n_kernel, (int64_t)N_KERNEL());
                             const int64_t n_kernel_blk = div_up(n_kernel_len, simd_w);
 
+                            const int64_t prefetch_a = 1;
+                            const int64_t prefetch_b = 1;
+
                             const int64_t m_kernel_idx = m_kernel_len - 1;
                             const int64_t n_kernel_idx = n_kernel_blk - 1;
                             if (std::is_same<eT, float>::value) {
-                                auto gemm_kernel_func = sgemm_ndarray_kernel_tn_max8x12_func_table[init_t][m_kernel_idx][n_kernel_idx];
+                                auto gemm_kernel_func = sgemm_ndarray_kernel_tn_max8x12_func_table[prefetch_a][prefetch_b][init_t][m_kernel_idx][n_kernel_idx];
                                 gemm_kernel_func(
                                     temp_buffer_a + kk * M_OUTER_BLK() + m_kernel * K_INNER_BLK(),
                                     temp_buffer_b + n_kernel * K_INNER_BLK(),

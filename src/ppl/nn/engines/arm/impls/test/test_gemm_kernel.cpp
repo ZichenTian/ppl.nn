@@ -84,7 +84,7 @@ void test_sgemm_kernel(
         sgemm_ref(A, B, M, N, K, M, N, N, C_ref);
     }
 
-    auto gemm_kernel_func = ppl::kernel::arm_server::neon::sgemm_ndarray_kernel_tn_max8x12_func_table[1][7][2];
+    auto gemm_kernel_func = ppl::kernel::arm_server::neon::sgemm_ndarray_kernel_tn_max8x12_func_table[0][0][1][7][2];
     gemm_kernel_func(A, B, K, M, N, N, C);
 
     if (diff) {
