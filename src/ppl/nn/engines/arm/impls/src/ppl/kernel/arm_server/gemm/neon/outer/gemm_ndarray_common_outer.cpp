@@ -61,14 +61,6 @@ inline void* align_ptr(const void* ptr, uint64_t align)
     return (void*)(((uint64_t)ptr + align - 1) / align * align);
 }
 
-uint64_t gemm_ndarray_common_outer_calc_buffer_elemsize(
-    const int64_t M,
-    const int64_t N,
-    const int64_t K)
-{
-    return temp_buffer_per_thread(K) * PPL_OMP_MAX_THREADS();
-}
-
 inline void transpose_4x4_32bit(
     float32x4_t& v0,
     float32x4_t& v1,
@@ -320,12 +312,14 @@ ppl::common::RetCode gemm_ndarray_common_outer(
     const float beta,
     const int64_t ldy,
     const gemm_C_type_t c_type,
-    void* temp,
     eT* Y)
 {
     const int64_t simd_w = 4;
     const int64_t num_threads = PPL_OMP_MAX_THREADS();
     std::vector<const float*> last_pack_a_ptr(num_threads, nullptr);
+
+    ppl::common::GenericCpuAllocator allocator;
+    void* temp = allocator.Alloc(temp_buffer_per_thread(K) * num_threads * sizeof(eT));
 
     PRAGMA_OMP_PARALLEL_FOR_COLLAPSE(2)
     for (int64_t m = 0; m < M; m += M_OUTER_BLK()) {
@@ -385,6 +379,8 @@ ppl::common::RetCode gemm_ndarray_common_outer(
         }
     }
 
+    allocator.Free(temp);
+
     return ppl::common::RC_SUCCESS;
 }
 
@@ -404,7 +400,6 @@ template ppl::common::RetCode gemm_ndarray_common_outer<float>(
     const float beta,
     const int64_t ldy,
     const gemm_C_type_t c_type,
-    void* temp,
     float* Y);
 
 }}}} // namespace ppl::kernel::arm_server::neon

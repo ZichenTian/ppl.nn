@@ -23,11 +23,6 @@
 
 namespace ppl { namespace kernel { namespace arm_server { namespace neon {
 
-uint64_t gemm_ndarray_common_outer_calc_buffer_elemsize(
-    const int64_t M,
-    const int64_t N,
-    const int64_t K);
-
 template <typename eT>
 ppl::common::RetCode gemm_ndarray_common_outer(
     const eT* A,
@@ -45,7 +40,6 @@ ppl::common::RetCode gemm_ndarray_common_outer(
     const float beta,
     const int64_t ldy,
     const gemm_C_type_t c_type,
-    void* temp,
     eT* Y);
 
 }}}} // namespace ppl::kernel::arm_server::neon

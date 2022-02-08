@@ -73,7 +73,7 @@ void test_sgemm(
 
     // const int64_t temp_size = sgemm_algo1_buffer_bytes(M, N, K);
 
-    const int64_t temp_size = ppl::kernel::arm_server::neon::gemm_ndarray_calc_buffer_size(ppl::common::DATATYPE_FLOAT32, M, N, K);
+    const int64_t temp_size = 1;
 
     float* temp = (float*)aligned_alloc(64, temp_size);
 
@@ -104,7 +104,7 @@ void test_sgemm(
 
     // ppl::kernel::arm_server::neon::gemm_fp32(A, B, nullptr, C, temp, M, N, K, K, N, 0, N, 1, 0, sgemm_m1, sgemm_n1, sgemm_k1, sgemm_m3, sgemm_k3);
     // sgemm_algo1(A, B, K, N, M, N, K, N, temp, C);
-    ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT32, M, N, K, K, N, 0, 0, 0, 1.0f, 0, N, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, temp, C);
+    ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT32, M, N, K, K, N, 0, 0, 0, 1.0f, 0, N, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, C);
 
     auto end       = std::chrono::system_clock::now();
     auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -134,7 +134,7 @@ void test_sgemm(
     for (int64_t i = 0; i < loops; i++) {
         // sgemm_algo1(A, B, K, N, M, N, K, N, temp, C);
         // ppl::kernel::arm_server::neon::gemm_fp32(A, B, nullptr, C, temp, M, N, K, K, N, 0, N, 1, 0, sgemm_m1, sgemm_n1, sgemm_k1, sgemm_m3, sgemm_k3);
-        ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT32, M, N, K, K, N, 0, 0, 0, 1.0f, 0, N, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, temp, C);
+        ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT32, M, N, K, K, N, 0, 0, 0, 1.0f, 0, N, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, C);
     }
     end       = std::chrono::system_clock::now();
     time_diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -154,7 +154,7 @@ void test_sgemm(
 
 int main(int argc, char* argv[])
 {
-    const bool diff = false;
+    const bool diff = true;
     test_sgemm(1024, 1152, 1024, diff);
     test_sgemm(1024, 1024, 1024, diff);
     test_sgemm(255, 127, 33, diff);

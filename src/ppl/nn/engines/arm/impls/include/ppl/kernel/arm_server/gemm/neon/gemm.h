@@ -68,7 +68,6 @@ ppl::common::RetCode gemm_ndarray(
     const float beta,
     const int64_t ldy,
     const gemm_C_type_t c_type,
-    void *temp,
     void *Y);
 
 #ifdef PPLNN_USE_ARMV8_2_FP16

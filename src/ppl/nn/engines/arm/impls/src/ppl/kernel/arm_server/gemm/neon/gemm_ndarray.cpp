@@ -21,15 +21,6 @@
 
 namespace ppl { namespace kernel { namespace arm_server { namespace neon {
 
-uint64_t gemm_ndarray_calc_buffer_size(
-    const ppl::common::datatype_t data_type,
-    const int64_t M,
-    const int64_t N,
-    const int64_t K)
-{
-    return gemm_ndarray_common_outer_calc_buffer_elemsize(M, N, K) * ppl::common::GetSizeOfDataType(data_type);
-}
-
 template <typename eT>
 static ppl::common::RetCode gemm_ndarray_common(
     const eT* A,
@@ -47,7 +38,6 @@ static ppl::common::RetCode gemm_ndarray_common(
     const float beta,
     const int64_t ldy,
     const gemm_C_type_t c_type,
-    void* temp,
     eT* Y)
 {
     if (A == nullptr || B == nullptr || Y == nullptr) {
@@ -71,7 +61,7 @@ static ppl::common::RetCode gemm_ndarray_common(
         return ppl::common::RC_INVALID_VALUE;
     }
 
-    return gemm_ndarray_common_outer<eT>(A, B, C, M, N, K, lda, ldb, ldc, transA, transB, alpha, beta, ldy, c_type, temp, Y);
+    return gemm_ndarray_common_outer<eT>(A, B, C, M, N, K, lda, ldb, ldc, transA, transB, alpha, beta, ldy, c_type, Y);
 }
 
 ppl::common::RetCode gemm_ndarray(
@@ -91,15 +81,14 @@ ppl::common::RetCode gemm_ndarray(
     const float beta,
     const int64_t ldy,
     const gemm_C_type_t c_type,
-    void* temp,
     void* Y)
 {
     switch (data_type) {
-        case ppl::common::DATATYPE_FLOAT32: return gemm_ndarray_common<float>((const float*)A, (const float*)B, (const float*)C, M, N, K, lda, ldb, ldc, transA, transB, alpha, beta, ldy, c_type, temp, (float*)Y);
+        case ppl::common::DATATYPE_FLOAT32: return gemm_ndarray_common<float>((const float*)A, (const float*)B, (const float*)C, M, N, K, lda, ldb, ldc, transA, transB, alpha, beta, ldy, c_type, (float*)Y);
         default: break;
     }
 
-    return ppl::common::RC_SUCCESS;
+    return ppl::common::RC_UNSUPPORTED;
 }
 
 }}}} // namespace ppl::kernel::arm_server::neon
