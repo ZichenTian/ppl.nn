@@ -85,6 +85,7 @@ ppl::common::RetCode gemm_ndarray(
 {
     switch (data_type) {
         case ppl::common::DATATYPE_FLOAT32: return gemm_ndarray_common<float>((const float*)A, (const float*)B, (const float*)C, M, N, K, lda, ldb, ldc, transA, transB, alpha, beta, ldy, c_type, (float*)Y);
+        case ppl::common::DATATYPE_FLOAT16: return gemm_ndarray_common<__fp16>((const __fp16*)A, (const __fp16*)B, (const __fp16*)C, M, N, K, lda, ldb, ldc, transA, transB, alpha, beta, ldy, c_type, (__fp16*)Y);
         default: break;
     }
 

@@ -405,10 +405,7 @@ void sgemm_ndarray_tn_max8x12_kernel_func<PREFETCH_A(), PREFETCH_B(), INIT_T(), 
         , "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31"
     );
 
-
-
 #undef IF_M_GT
 #undef IF_N_GT
 #undef IF_MN_GT
 }
-
