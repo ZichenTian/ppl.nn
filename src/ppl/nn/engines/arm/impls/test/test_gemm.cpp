@@ -165,8 +165,10 @@ void test_sgemm(
 
     const double gops  = M * N * K * 2 / 1e9;
     const double speed = gops / (time / 1000);
+    const double peak_gops = 41.6 * PPL_OMP_MAX_THREADS();
+    const double ratio = speed / peak_gops;
 
-    fprintf(stderr, "time = %f ms, speed = %f gops/s\n", time, speed);
+    fprintf(stderr, "time = %f ms, speed = %f gops/s, ratio = %f\n", time, speed, ratio);
 
     free(A);
     free(B);
@@ -273,8 +275,10 @@ void test_hgemm(
 
     const double gops  = M * N * K * 2 / 1e9;
     const double speed = gops / (time / 1000);
+    const double peak_gops = 83.2 * PPL_OMP_MAX_THREADS();
+    const double ratio = speed / peak_gops;
 
-    fprintf(stderr, "time = %f ms, speed = %f gops/s\n", time, speed);
+    fprintf(stderr, "time = %f ms, speed = %f gops/s, ratio = %f\n", time, speed, ratio);
 
     free(A);
     free(B);

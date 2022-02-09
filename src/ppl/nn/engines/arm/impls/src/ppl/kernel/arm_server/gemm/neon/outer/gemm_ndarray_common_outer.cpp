@@ -28,10 +28,9 @@
 namespace ppl { namespace kernel { namespace arm_server { namespace neon {
 
 struct gemm_blk_param {
-    int64_t m_outer_blk;
-    int64_t n_outer_blk;
-    int64_t k_inner_blk;
-    int64_t n_inner_blk;
+    int64_t m_blk;
+    int64_t n_blk;
+    int64_t k_blk;
 };
 
 #define SGEMM_M_KERNEL 8
@@ -69,17 +68,17 @@ inline int64_t N_KERNEL<__fp16>()
 
 inline uint64_t temp_buffer_a_elemsize(const gemm_blk_param& blk_param, const int64_t K)
 {
-    return blk_param.m_outer_blk * round_up(K, blk_param.k_inner_blk);
+    return blk_param.m_blk * round_up(K, blk_param.k_blk);
 }
 
 inline uint64_t temp_buffer_b_elemsize(const gemm_blk_param& blk_param)
 {
-    return blk_param.k_inner_blk * blk_param.n_inner_blk;
+    return blk_param.k_blk * blk_param.n_blk;
 }
 
 inline uint64_t temp_buffer_dst_elemsize(const gemm_blk_param& blk_param)
 {
-    return blk_param.m_outer_blk * blk_param.n_outer_blk;
+    return blk_param.m_blk * blk_param.n_blk;
 }
 
 inline uint64_t temp_buffer_per_thread(const gemm_blk_param& blk_param, const int64_t K)
@@ -180,12 +179,12 @@ inline void gemm_ndarray_common_outer_pack_at<float>(
     const int64_t ld_dst = M_KERNEL<float>();
 
     if (!transA) {
-        for (int64_t k_base = 0; k_base < K; k_base += blk_param.k_inner_blk) {
-            const int64_t k_eff = min(K - k_base, blk_param.k_inner_blk);
+        for (int64_t k_base = 0; k_base < K; k_base += blk_param.k_blk) {
+            const int64_t k_eff = min(K - k_base, blk_param.k_blk);
             for (int64_t m_base = 0; m_base < M; m_base += M_KERNEL<float>()) {
                 const int64_t m_eff = min(M - m_base, M_KERNEL<float>());
                 const float* p_src  = A + m_base * lda + k_base;
-                float* p_dst        = dst + k_base * blk_param.m_outer_blk + m_base * blk_param.k_inner_blk;
+                float* p_dst        = dst + k_base * blk_param.m_blk + m_base * blk_param.k_blk;
 
                 int64_t m = 0;
                 for (; m + simd_w < m_eff; m += simd_w) {
@@ -249,12 +248,12 @@ inline void gemm_ndarray_common_outer_pack_at<__fp16>(
     const int64_t ld_dst = M_KERNEL<__fp16>();
 
     if (!transA) {
-        for (int64_t k_base = 0; k_base < K; k_base += blk_param.k_inner_blk) {
-            const int64_t k_eff = min(K - k_base, blk_param.k_inner_blk);
+        for (int64_t k_base = 0; k_base < K; k_base += blk_param.k_blk) {
+            const int64_t k_eff = min(K - k_base, blk_param.k_blk);
             for (int64_t m_base = 0; m_base < M; m_base += M_KERNEL<__fp16>()) {
                 const int64_t m_eff = min(M - m_base, M_KERNEL<__fp16>());
                 const __fp16* p_src = A + m_base * lda + k_base;
-                __fp16* p_dst       = dst + k_base * blk_param.m_outer_blk + m_base * blk_param.k_inner_blk;
+                __fp16* p_dst       = dst + k_base * blk_param.m_blk + m_base * blk_param.k_blk;
 
                 int64_t m = 0;
                 for (; m + simd_w < m_eff; m += simd_w) {
@@ -355,7 +354,7 @@ inline void gemm_ndarray_common_outer_pack_bn<float>(
         for (int64_t n_base = 0; n_base < N; n_base += N_KERNEL<float>()) {
             const int64_t n_eff = min(N - n_base, N_KERNEL<float>());
             const float* p_src  = B + n_base;
-            float* p_dst        = dst + n_base * blk_param.k_inner_blk;
+            float* p_dst        = dst + n_base * blk_param.k_blk;
 
             const int64_t prefetch_line = 1;
             const float* p_src_next     = p_src + prefetch_line * ldb;
@@ -400,7 +399,7 @@ inline void gemm_ndarray_common_outer_pack_bn<__fp16>(
         for (int64_t n_base = 0; n_base < N; n_base += N_KERNEL<__fp16>()) {
             const int64_t n_eff = min(N - n_base, N_KERNEL<__fp16>());
             const __fp16* p_src = B + n_base;
-            __fp16* p_dst       = dst + n_base * blk_param.k_inner_blk;
+            __fp16* p_dst       = dst + n_base * blk_param.k_blk;
 
             const int64_t prefetch_line = 1;
             const __fp16* p_src_next    = p_src + prefetch_line * ldb;
@@ -448,7 +447,7 @@ inline void gemm_ndarray_common_outer_store_dst(
     typedef typename DT<eT, eN>::vecDT vecType;
 
     const int64_t simd_w = sizeof(vecType) / sizeof(eT);
-    const int64_t ld_src = blk_param.n_inner_blk;
+    const int64_t ld_src = blk_param.n_blk;
 
     const eT alpha = (const eT)alpha_fp32;
     const eT beta  = (const eT)beta_fp32;
@@ -511,6 +510,64 @@ inline void gemm_ndarray_common_outer_store_dst(
 }
 
 template <typename eT>
+inline gemm_blk_param gemm_ndarray_common_outer_generate_blk_param(
+    const int64_t M, 
+    const int64_t N, 
+    const int64_t K, 
+    const int64_t num_threads) {
+
+    gemm_blk_param blk_param;
+    // basic blocking param
+    if (std::is_same<eT, float>::value) {
+        blk_param.m_blk = 512;
+        blk_param.n_blk = 96;
+        blk_param.k_blk = 128;
+    } else if (std::is_same<eT, __fp16>::value) {
+        blk_param.m_blk = 512;
+        blk_param.n_blk = 96;
+        blk_param.k_blk = 256;
+    }
+
+    blk_param.k_blk = min(blk_param.k_blk, K);
+    blk_param.m_blk = min(blk_param.m_blk, round_up(M, M_KERNEL<eT>()));
+    blk_param.n_blk = min(blk_param.n_blk, round_up(N, N_KERNEL<eT>()));
+
+    if (num_threads == 1) { // for single thread & small M/N case, just limit block size to M/N
+        return blk_param;
+    }
+
+    blk_param.m_blk = 256;  // 512 is too large for multi-thread
+
+    // TODO: not a best task divide strategy
+    int64_t m_task_num = div_up(M, blk_param.m_blk);
+    int64_t n_task_num = div_up(N, blk_param.n_blk);
+    while (m_task_num * n_task_num < num_threads * 4) {
+        const bool m_can_divide = blk_param.m_blk >= 2 * M_KERNEL<eT>();
+        const bool n_can_divide = blk_param.n_blk >= 2 * N_KERNEL<eT>();
+        if (m_task_num <= n_task_num && m_can_divide) {
+            blk_param.m_blk /= 2;
+        } else if (n_task_num <= m_task_num && n_can_divide) {
+            blk_param.n_blk /= 2;
+        } else if (m_can_divide) {
+            blk_param.m_blk /= 2;
+        } else if (n_can_divide) {
+            blk_param.n_blk /= 2;
+        } else {
+            break;
+        }
+        m_task_num = div_up(M, blk_param.m_blk);
+        n_task_num = div_up(N, blk_param.n_blk);
+    }
+
+    m_task_num = div_up(M, blk_param.m_blk);
+    n_task_num = div_up(N, blk_param.n_blk);
+
+    // fprintf(stderr, "M=%ld, N=%ld, K=%ld, m_blk=%ld, n_blk=%ld, k_blk=%ld, m_task_num=%ld, n_task_num=%ld\n", M, N, K, blk_param.m_blk, blk_param.n_blk, blk_param.k_blk, m_task_num, n_task_num);
+
+    return blk_param;
+}
+
+template <typename eT>
 ppl::common::RetCode gemm_ndarray_common_outer(
     const eT* A,
     const eT* B,
@@ -532,89 +589,74 @@ ppl::common::RetCode gemm_ndarray_common_outer(
     const int64_t simd_w      = 128 / 8 / sizeof(eT);
     const int64_t num_threads = PPL_OMP_MAX_THREADS();
 
-    gemm_blk_param blk_param;
-    if (std::is_same<eT, float>::value) {
-        blk_param.m_outer_blk = 256;
-        blk_param.n_outer_blk = 192;
-        blk_param.k_inner_blk = 128;
-        blk_param.n_inner_blk = 96;
-    } else if (std::is_same<eT, __fp16>::value) {
-        blk_param.m_outer_blk = 256;
-        blk_param.n_outer_blk = 192;
-        blk_param.k_inner_blk = 256;
-        blk_param.n_inner_blk = 96;
-    }
+    gemm_blk_param blk_param = gemm_ndarray_common_outer_generate_blk_param<eT>(M, N, K, num_threads);
 
     ppl::common::GenericCpuAllocator allocator;
     void* temp = allocator.Alloc(temp_buffer_per_thread(blk_param, K) * num_threads * sizeof(eT));
     std::vector<const eT*> last_pack_a_ptr(num_threads, nullptr);
 
     PRAGMA_OMP_PARALLEL_FOR_COLLAPSE(2)
-    for (int64_t m = 0; m < M; m += blk_param.m_outer_blk) {
-        for (int64_t n = 0; n < N; n += blk_param.n_outer_blk) {
+    for (int64_t m = 0; m < M; m += blk_param.m_blk) {
+        for (int64_t n = 0; n < N; n += blk_param.n_blk) {
             const int64_t thread_id = PPL_OMP_THREAD_ID();
             eT* temp_buffer         = (eT*)align_ptr((eT*)temp + temp_buffer_per_thread(blk_param, K) * thread_id, 64);
             eT* temp_buffer_a       = temp_buffer;
             eT* temp_buffer_b       = temp_buffer_a + temp_buffer_a_elemsize(blk_param, K);
             eT* temp_buffer_dst     = temp_buffer_b + temp_buffer_b_elemsize(blk_param);
 
-            const int64_t m_eff = min(M - m, blk_param.m_outer_blk);
-            const int64_t n_eff = min(N - n, blk_param.n_outer_blk);
+            const int64_t m_eff = min(M - m, blk_param.m_blk);
+            const int64_t n_eff = min(N - n, blk_param.n_blk);
             const eT* p_src_a   = transA ? A + m : A + m * lda;
             if (last_pack_a_ptr[thread_id] != p_src_a) {
                 gemm_ndarray_common_outer_pack_at<eT>(p_src_a, m_eff, K, lda, transA, blk_param, temp_buffer_a);
                 last_pack_a_ptr[thread_id] = p_src_a;
             }
 
-            for (int64_t nn = 0; nn < n_eff; nn += blk_param.n_inner_blk) {
-                const int64_t nn_eff = min(n_eff - nn, blk_param.n_inner_blk);
+            for (int64_t kk = 0; kk < K; kk += blk_param.k_blk) {
+                const int64_t kk_eff = min(K - kk, blk_param.k_blk);
+                const eT* p_src_b    = transB ? B + n * ldb + kk : B + kk * ldb + n;
+                gemm_ndarray_common_outer_pack_bn<eT>(p_src_b, kk_eff, n_eff, ldb, transB, blk_param, temp_buffer_b);
 
-                for (int64_t kk = 0; kk < K; kk += blk_param.k_inner_blk) {
-                    const int64_t kk_eff = min(K - kk, blk_param.k_inner_blk);
-                    const eT* p_src_b    = transB ? B + (n + nn) * ldb + kk : B + kk * ldb + n + nn;
-                    gemm_ndarray_common_outer_pack_bn<eT>(p_src_b, kk_eff, nn_eff, ldb, transB, blk_param, temp_buffer_b);
+                const int64_t init_t = kk == 0 ? 0 : 1;
 
-                    const int64_t init_t = kk == 0 ? 0 : 1;
+                for (int64_t m_kernel = 0; m_kernel < m_eff; m_kernel += M_KERNEL<eT>()) {
+                    for (int64_t n_kernel = 0; n_kernel < n_eff; n_kernel += N_KERNEL<eT>()) {
+                        const int64_t m_kernel_len = min(m_eff - m_kernel, M_KERNEL<eT>());
+                        const int64_t n_kernel_len = min(n_eff - n_kernel, N_KERNEL<eT>());
+                        const int64_t n_kernel_blk = div_up(n_kernel_len, simd_w);
 
-                    for (int64_t m_kernel = 0; m_kernel < m_eff; m_kernel += M_KERNEL<eT>()) {
-                        for (int64_t n_kernel = 0; n_kernel < nn_eff; n_kernel += N_KERNEL<eT>()) {
-                            const int64_t m_kernel_len = min(m_eff - m_kernel, M_KERNEL<eT>());
-                            const int64_t n_kernel_len = min(nn_eff - n_kernel, N_KERNEL<eT>());
-                            const int64_t n_kernel_blk = div_up(n_kernel_len, simd_w);
+                        const int64_t prefetch_a = 1;
+                        const int64_t prefetch_b = 1;
 
-                            const int64_t prefetch_a = 1;
-                            const int64_t prefetch_b = 1;
-
-                            const int64_t m_kernel_idx = m_kernel_len - 1;
-                            const int64_t n_kernel_idx = n_kernel_blk - 1;
-                            if (std::is_same<eT, float>::value) {
-                                auto gemm_kernel_func = sgemm_ndarray_kernel_tn_max8x12_func_table[prefetch_a][prefetch_b][init_t][m_kernel_idx][n_kernel_idx];
-                                gemm_kernel_func(
-                                    (const float*)temp_buffer_a + kk * blk_param.m_outer_blk + m_kernel * blk_param.k_inner_blk,
-                                    (const float*)temp_buffer_b + n_kernel * blk_param.k_inner_blk,
-                                    kk_eff,
-                                    M_KERNEL<eT>(),
-                                    N_KERNEL<eT>(),
-                                    blk_param.n_inner_blk,
-                                    (float*)temp_buffer_dst + m_kernel * blk_param.n_inner_blk + n_kernel);
-                            }
-                            if (std::is_same<eT, __fp16>::value) {
-                                auto gemm_kernel_func = hgemm_ndarray_kernel_tn_max8x24_func_table[prefetch_a][prefetch_b][init_t][m_kernel_idx][n_kernel_idx];
-                                gemm_kernel_func(
-                                    (const __fp16*)temp_buffer_a + kk * blk_param.m_outer_blk + m_kernel * blk_param.k_inner_blk,
-                                    (const __fp16*)temp_buffer_b + n_kernel * blk_param.k_inner_blk,
-                                    kk_eff,
-                                    M_KERNEL<eT>(),
-                                    N_KERNEL<eT>(),
-                                    blk_param.n_inner_blk,
-                                    (__fp16*)temp_buffer_dst + m_kernel * blk_param.n_inner_blk + n_kernel);
-                            }
+                        const int64_t m_kernel_idx = m_kernel_len - 1;
+                        const int64_t n_kernel_idx = n_kernel_blk - 1;
+                        if (std::is_same<eT, float>::value) {
+                            auto gemm_kernel_func = sgemm_ndarray_kernel_tn_max8x12_func_table[prefetch_a][prefetch_b][init_t][m_kernel_idx][n_kernel_idx];
+                            gemm_kernel_func(
+                                (const float*)temp_buffer_a + kk * blk_param.m_blk + m_kernel * blk_param.k_blk,
+                                (const float*)temp_buffer_b + n_kernel * blk_param.k_blk,
+                                kk_eff,
+                                M_KERNEL<eT>(),
+                                N_KERNEL<eT>(),
+                                blk_param.n_blk,
+                                (float*)temp_buffer_dst + m_kernel * blk_param.n_blk + n_kernel);
+                        }
+                        if (std::is_same<eT, __fp16>::value) {
+                            auto gemm_kernel_func = hgemm_ndarray_kernel_tn_max8x24_func_table[prefetch_a][prefetch_b][init_t][m_kernel_idx][n_kernel_idx];
+                            gemm_kernel_func(
+                                (const __fp16*)temp_buffer_a + kk * blk_param.m_blk + m_kernel * blk_param.k_blk,
+                                (const __fp16*)temp_buffer_b + n_kernel * blk_param.k_blk,
+                                kk_eff,
+                                M_KERNEL<eT>(),
+                                N_KERNEL<eT>(),
+                                blk_param.n_blk,
+                                (__fp16*)temp_buffer_dst + m_kernel * blk_param.n_blk + n_kernel);
                         }
                     }
                 }
-
-                gemm_ndarray_common_outer_store_dst<eT>(temp_buffer_dst, C, m_eff, nn_eff, m, nn, alpha, beta, ldc, ldy, c_type, blk_param, Y + m * ldy + n + nn);
             }
+
+            gemm_ndarray_common_outer_store_dst<eT>(temp_buffer_dst, C, m_eff, n_eff, m, n, alpha, beta, ldc, ldy, c_type, blk_param, Y + m * ldy + n);
         }
     }
 
