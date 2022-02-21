@@ -156,78 +156,74 @@ inline void prefetch_l1(const void* addr)
 }
 
 template <typename eT>
-inline void gemm_ndarray_common_outer_pack_at(
+inline void gemm_ndarray_common_outer_pack_an2at(
     const eT* A,
     const int64_t M,
     const int64_t K,
     const int64_t lda,
-    const int64_t transA,
     const gemm_blk_param& blk_param,
     eT* dst);
 
 template <>
-inline void gemm_ndarray_common_outer_pack_at<float>(
+inline void gemm_ndarray_common_outer_pack_an2at<float>(
     const float* A,
     const int64_t M,
     const int64_t K,
     const int64_t lda,
-    const int64_t transA,
     const gemm_blk_param& blk_param,
     float* dst)
 {
     const int64_t simd_w = 4;
     const int64_t ld_dst = M_KERNEL<float>();
 
-    if (!transA) {
-        for (int64_t k_base = 0; k_base < K; k_base += blk_param.k_blk) {
-            const int64_t k_eff = min(K - k_base, blk_param.k_blk);
-            for (int64_t m_base = 0; m_base < M; m_base += M_KERNEL<float>()) {
-                const int64_t m_eff = min(M - m_base, M_KERNEL<float>());
-                const float* p_src  = A + m_base * lda + k_base;
-                float* p_dst        = dst + k_base * blk_param.m_blk + m_base * blk_param.k_blk;
+    for (int64_t k_base = 0; k_base < K; k_base += blk_param.k_blk) {
+        const int64_t k_eff = min(K - k_base, blk_param.k_blk);
+        for (int64_t m_base = 0; m_base < M; m_base += M_KERNEL<float>()) {
+            const int64_t m_eff = min(M - m_base, M_KERNEL<float>());
+            const float* p_src  = A + m_base * lda + k_base;
+            float* p_dst        = dst + k_base * blk_param.m_blk + m_base * blk_param.k_blk;
 
-                int64_t m = 0;
-                for (; m + simd_w < m_eff; m += simd_w) {
-                    const float* p_src_0 = p_src + (m + 0) * lda;
-                    const float* p_src_1 = p_src + (m + 1) * lda;
-                    const float* p_src_2 = p_src + (m + 2) * lda;
-                    const float* p_src_3 = p_src + (m + 3) * lda;
+            int64_t m = 0;
+            for (; m + simd_w < m_eff; m += simd_w) {
+                const float* p_src_0 = p_src + (m + 0) * lda;
+                const float* p_src_1 = p_src + (m + 1) * lda;
+                const float* p_src_2 = p_src + (m + 2) * lda;
+                const float* p_src_3 = p_src + (m + 3) * lda;
 
-                    const float* p_src_4 = p_src + (m + 4) * lda;
-                    const float* p_src_5 = p_src + (m + 5) * lda;
-                    const float* p_src_6 = p_src + (m + 6) * lda;
-                    const float* p_src_7 = p_src + (m + 7) * lda;
+                const float* p_src_4 = p_src + (m + 4) * lda;
+                const float* p_src_5 = p_src + (m + 5) * lda;
+                const float* p_src_6 = p_src + (m + 6) * lda;
+                const float* p_src_7 = p_src + (m + 7) * lda;
 
-                    int64_t k = 0;
-                    for (; k + simd_w <= k_eff; k += simd_w) {
-                        prefetch_l1(p_src_4 + k);
-                        prefetch_l1(p_src_5 + k);
-                        prefetch_l1(p_src_6 + k);
-                        prefetch_l1(p_src_7 + k);
+                int64_t k = 0;
+                for (; k + simd_w <= k_eff; k += simd_w) {
+                    prefetch_l1(p_src_4 + k);
+                    prefetch_l1(p_src_5 + k);
+                    prefetch_l1(p_src_6 + k);
+                    prefetch_l1(p_src_7 + k);
 
-                        float32x4_t v0 = vld1q_f32(p_src_0 + k);
-                        float32x4_t v1 = vld1q_f32(p_src_1 + k);
-                        float32x4_t v2 = vld1q_f32(p_src_2 + k);
-                        float32x4_t v3 = vld1q_f32(p_src_3 + k);
+                    float32x4_t v0 = vld1q_f32(p_src_0 + k);
+                    float32x4_t v1 = vld1q_f32(p_src_1 + k);
+                    float32x4_t v2 = vld1q_f32(p_src_2 + k);
+                    float32x4_t v3 = vld1q_f32(p_src_3 + k);
 
-                        transpose_4x4_32bit(v0, v1, v2, v3);
+                    transpose_4x4_32bit(v0, v1, v2, v3);
 
-                        vst1q_f32(p_dst + (k + 0) * ld_dst + m, v0);
-                        vst1q_f32(p_dst + (k + 1) * ld_dst + m, v1);
-                        vst1q_f32(p_dst + (k + 2) * ld_dst + m, v2);
-                        vst1q_f32(p_dst + (k + 3) * ld_dst + m, v3);
-                    }
-                    for (; k < k_eff; k++) {
-                        p_dst[k * ld_dst + m + 0] = p_src_0[k];
-                        p_dst[k * ld_dst + m + 1] = p_src_1[k];
-                        p_dst[k * ld_dst + m + 2] = p_src_2[k];
-                        p_dst[k * ld_dst + m + 3] = p_src_3[k];
-                    }
+                    vst1q_f32(p_dst + (k + 0) * ld_dst + m, v0);
+                    vst1q_f32(p_dst + (k + 1) * ld_dst + m, v1);
+                    vst1q_f32(p_dst + (k + 2) * ld_dst + m, v2);
+                    vst1q_f32(p_dst + (k + 3) * ld_dst + m, v3);
                 }
-                for (; m < m_eff; m++) {
-                    for (int64_t k = 0; k < k_eff; k++) {
-                        p_dst[k * ld_dst + m] = p_src[m * lda + k];
-                    }
+                for (; k < k_eff; k++) {
+                    p_dst[k * ld_dst + m + 0] = p_src_0[k];
+                    p_dst[k * ld_dst + m + 1] = p_src_1[k];
+                    p_dst[k * ld_dst + m + 2] = p_src_2[k];
+                    p_dst[k * ld_dst + m + 3] = p_src_3[k];
+                }
+            }
+            for (; m < m_eff; m++) {
+                for (int64_t k = 0; k < k_eff; k++) {
+                    p_dst[k * ld_dst + m] = p_src[m * lda + k];
                 }
             }
         }
@@ -235,91 +231,136 @@ inline void gemm_ndarray_common_outer_pack_at<float>(
 }
 
 template <>
-inline void gemm_ndarray_common_outer_pack_at<__fp16>(
+inline void gemm_ndarray_common_outer_pack_an2at<__fp16>(
     const __fp16* A,
     const int64_t M,
     const int64_t K,
     const int64_t lda,
-    const int64_t transA,
     const gemm_blk_param& blk_param,
     __fp16* dst)
 {
     const int64_t simd_w = 8;
     const int64_t ld_dst = M_KERNEL<__fp16>();
 
-    if (!transA) {
-        for (int64_t k_base = 0; k_base < K; k_base += blk_param.k_blk) {
-            const int64_t k_eff = min(K - k_base, blk_param.k_blk);
-            for (int64_t m_base = 0; m_base < M; m_base += M_KERNEL<__fp16>()) {
-                const int64_t m_eff = min(M - m_base, M_KERNEL<__fp16>());
-                const __fp16* p_src = A + m_base * lda + k_base;
-                __fp16* p_dst       = dst + k_base * blk_param.m_blk + m_base * blk_param.k_blk;
+    for (int64_t k_base = 0; k_base < K; k_base += blk_param.k_blk) {
+        const int64_t k_eff = min(K - k_base, blk_param.k_blk);
+        for (int64_t m_base = 0; m_base < M; m_base += M_KERNEL<__fp16>()) {
+            const int64_t m_eff = min(M - m_base, M_KERNEL<__fp16>());
+            const __fp16* p_src = A + m_base * lda + k_base;
+            __fp16* p_dst       = dst + k_base * blk_param.m_blk + m_base * blk_param.k_blk;
 
-                int64_t m = 0;
-                for (; m + simd_w < m_eff; m += simd_w) {
-                    const __fp16* p_src_0 = p_src + (m + 0) * lda;
-                    const __fp16* p_src_1 = p_src + (m + 1) * lda;
-                    const __fp16* p_src_2 = p_src + (m + 2) * lda;
-                    const __fp16* p_src_3 = p_src + (m + 3) * lda;
-                    const __fp16* p_src_4 = p_src + (m + 4) * lda;
-                    const __fp16* p_src_5 = p_src + (m + 5) * lda;
-                    const __fp16* p_src_6 = p_src + (m + 6) * lda;
-                    const __fp16* p_src_7 = p_src + (m + 7) * lda;
+            int64_t m = 0;
+            for (; m + simd_w < m_eff; m += simd_w) {
+                const __fp16* p_src_0 = p_src + (m + 0) * lda;
+                const __fp16* p_src_1 = p_src + (m + 1) * lda;
+                const __fp16* p_src_2 = p_src + (m + 2) * lda;
+                const __fp16* p_src_3 = p_src + (m + 3) * lda;
+                const __fp16* p_src_4 = p_src + (m + 4) * lda;
+                const __fp16* p_src_5 = p_src + (m + 5) * lda;
+                const __fp16* p_src_6 = p_src + (m + 6) * lda;
+                const __fp16* p_src_7 = p_src + (m + 7) * lda;
 
-                    const __fp16* p_src_8  = p_src + (m + 8) * lda;
-                    const __fp16* p_src_9  = p_src + (m + 9) * lda;
-                    const __fp16* p_src_10 = p_src + (m + 10) * lda;
-                    const __fp16* p_src_11 = p_src + (m + 11) * lda;
-                    const __fp16* p_src_12 = p_src + (m + 12) * lda;
-                    const __fp16* p_src_13 = p_src + (m + 13) * lda;
-                    const __fp16* p_src_14 = p_src + (m + 14) * lda;
-                    const __fp16* p_src_15 = p_src + (m + 15) * lda;
+                const __fp16* p_src_8  = p_src + (m + 8) * lda;
+                const __fp16* p_src_9  = p_src + (m + 9) * lda;
+                const __fp16* p_src_10 = p_src + (m + 10) * lda;
+                const __fp16* p_src_11 = p_src + (m + 11) * lda;
+                const __fp16* p_src_12 = p_src + (m + 12) * lda;
+                const __fp16* p_src_13 = p_src + (m + 13) * lda;
+                const __fp16* p_src_14 = p_src + (m + 14) * lda;
+                const __fp16* p_src_15 = p_src + (m + 15) * lda;
 
-                    int64_t k = 0;
-                    for (; k + simd_w <= k_eff; k += simd_w) {
-                        prefetch_l1(p_src_8 + k);
-                        prefetch_l1(p_src_9 + k);
-                        prefetch_l1(p_src_10 + k);
-                        prefetch_l1(p_src_11 + k);
-                        prefetch_l1(p_src_12 + k);
-                        prefetch_l1(p_src_13 + k);
-                        prefetch_l1(p_src_14 + k);
-                        prefetch_l1(p_src_15 + k);
+                int64_t k = 0;
+                for (; k + simd_w <= k_eff; k += simd_w) {
+                    prefetch_l1(p_src_8 + k);
+                    prefetch_l1(p_src_9 + k);
+                    prefetch_l1(p_src_10 + k);
+                    prefetch_l1(p_src_11 + k);
+                    prefetch_l1(p_src_12 + k);
+                    prefetch_l1(p_src_13 + k);
+                    prefetch_l1(p_src_14 + k);
+                    prefetch_l1(p_src_15 + k);
 
-                        float16x8_t v0 = vld1q_f16(p_src_0 + k);
-                        float16x8_t v1 = vld1q_f16(p_src_1 + k);
-                        float16x8_t v2 = vld1q_f16(p_src_2 + k);
-                        float16x8_t v3 = vld1q_f16(p_src_3 + k);
-                        float16x8_t v4 = vld1q_f16(p_src_4 + k);
-                        float16x8_t v5 = vld1q_f16(p_src_5 + k);
-                        float16x8_t v6 = vld1q_f16(p_src_6 + k);
-                        float16x8_t v7 = vld1q_f16(p_src_7 + k);
+                    float16x8_t v0 = vld1q_f16(p_src_0 + k);
+                    float16x8_t v1 = vld1q_f16(p_src_1 + k);
+                    float16x8_t v2 = vld1q_f16(p_src_2 + k);
+                    float16x8_t v3 = vld1q_f16(p_src_3 + k);
+                    float16x8_t v4 = vld1q_f16(p_src_4 + k);
+                    float16x8_t v5 = vld1q_f16(p_src_5 + k);
+                    float16x8_t v6 = vld1q_f16(p_src_6 + k);
+                    float16x8_t v7 = vld1q_f16(p_src_7 + k);
 
-                        transpose_8x8_16bit(v0, v1, v2, v3, v4, v5, v6, v7);
+                    transpose_8x8_16bit(v0, v1, v2, v3, v4, v5, v6, v7);
 
-                        vst1q_f16(p_dst + (k + 0) * ld_dst + m, v0);
-                        vst1q_f16(p_dst + (k + 1) * ld_dst + m, v1);
-                        vst1q_f16(p_dst + (k + 2) * ld_dst + m, v2);
-                        vst1q_f16(p_dst + (k + 3) * ld_dst + m, v3);
-                        vst1q_f16(p_dst + (k + 4) * ld_dst + m, v4);
-                        vst1q_f16(p_dst + (k + 5) * ld_dst + m, v5);
-                        vst1q_f16(p_dst + (k + 6) * ld_dst + m, v6);
-                        vst1q_f16(p_dst + (k + 7) * ld_dst + m, v7);
-                    }
-                    for (; k < k_eff; k++) {
-                        p_dst[k * ld_dst + m + 0] = p_src_0[k];
-                        p_dst[k * ld_dst + m + 1] = p_src_1[k];
-                        p_dst[k * ld_dst + m + 2] = p_src_2[k];
-                        p_dst[k * ld_dst + m + 3] = p_src_3[k];
-                        p_dst[k * ld_dst + m + 4] = p_src_4[k];
-                        p_dst[k * ld_dst + m + 5] = p_src_5[k];
-                        p_dst[k * ld_dst + m + 6] = p_src_6[k];
-                        p_dst[k * ld_dst + m + 7] = p_src_7[k];
-                    }
+                    vst1q_f16(p_dst + (k + 0) * ld_dst + m, v0);
+                    vst1q_f16(p_dst + (k + 1) * ld_dst + m, v1);
+                    vst1q_f16(p_dst + (k + 2) * ld_dst + m, v2);
+                    vst1q_f16(p_dst + (k + 3) * ld_dst + m, v3);
+                    vst1q_f16(p_dst + (k + 4) * ld_dst + m, v4);
+                    vst1q_f16(p_dst + (k + 5) * ld_dst + m, v5);
+                    vst1q_f16(p_dst + (k + 6) * ld_dst + m, v6);
+                    vst1q_f16(p_dst + (k + 7) * ld_dst + m, v7);
                 }
-                for (; m < m_eff; m++) {
-                    for (int64_t k = 0; k < k_eff; k++) {
-                        p_dst[k * ld_dst + m] = p_src[m * lda + k];
+                for (; k < k_eff; k++) {
+                    p_dst[k * ld_dst + m + 0] = p_src_0[k];
+                    p_dst[k * ld_dst + m + 1] = p_src_1[k];
+                    p_dst[k * ld_dst + m + 2] = p_src_2[k];
+                    p_dst[k * ld_dst + m + 3] = p_src_3[k];
+                    p_dst[k * ld_dst + m + 4] = p_src_4[k];
+                    p_dst[k * ld_dst + m + 5] = p_src_5[k];
+                    p_dst[k * ld_dst + m + 6] = p_src_6[k];
+                    p_dst[k * ld_dst + m + 7] = p_src_7[k];
+                }
+            }
+            for (; m < m_eff; m++) {
+                for (int64_t k = 0; k < k_eff; k++) {
+                    p_dst[k * ld_dst + m] = p_src[m * lda + k];
+                }
+            }
+        }
+    }
+}
+
+template <typename eT>
+inline void gemm_ndarray_common_outer_pack_at2at(
+    const eT* A,
+    const int64_t M,
+    const int64_t K,
+    const int64_t lda,
+    const gemm_blk_param& blk_param,
+    eT* dst)
+{
+    constexpr int32_t eN = 128 / 8 / sizeof(eT);
+    typedef typename DT<eT, eN>::vecDT vecType;
+
+    const int64_t simd_w = sizeof(vecType) / sizeof(eT);
+    const int64_t ld_dst = M_KERNEL<eT>();
+
+    for (int64_t k_base = 0; k_base < K; k_base += blk_param.k_blk) {
+        const int64_t k_eff = min(K - k_base, blk_param.k_blk);
+        for (int64_t m_base = 0; m_base < M; m_base += M_KERNEL<eT>()) {
+            const int64_t m_eff = min(M - m_base, M_KERNEL<eT>());
+            const eT* p_src     = A + k_base * lda + m_base;
+            eT* p_dst           = dst + k_base * blk_param.m_blk + m_base * blk_param.k_blk;
+
+            const int64_t prefetch_line = 1;
+            const eT* p_src_next        = p_src + prefetch_line * lda;
+
+            if (m_eff == M_KERNEL<eT>()) {
+                for (int64_t k = 0; k < k_eff; k++) {
+                    prefetch_l1(p_src_next);
+                    vst<eT, eN>(p_dst + k * ld_dst + simd_w * 0, vld<eT, eN>(p_src + k * lda + simd_w * 0));
+                    vst<eT, eN>(p_dst + k * ld_dst + simd_w * 1, vld<eT, eN>(p_src + k * lda + simd_w * 1));
+                    vst<eT, eN>(p_dst + k * ld_dst + simd_w * 2, vld<eT, eN>(p_src + k * lda + simd_w * 2));
+                }
+            } else {
+                for (int64_t k = 0; k < k_eff; k++) {
+                    prefetch_l1(p_src_next);
+                    int64_t m = 0;
+                    for (; m + simd_w <= m_eff; m += simd_w) {
+                        vst<eT, eN>(p_dst + k * ld_dst + m, vld<eT, eN>(p_src + k * lda + m));
+                    }
+                    for (; m < m_eff; m++) {
+                        p_dst[k * ld_dst + m] = p_src[k * lda + m];
                     }
                 }
             }
@@ -328,100 +369,132 @@ inline void gemm_ndarray_common_outer_pack_at<__fp16>(
 }
 
 template <typename eT>
-inline void gemm_ndarray_common_outer_pack_bn(
+inline void gemm_ndarray_common_outer_pack_bn2bn(
     const eT* B,
     const int64_t K,
     const int64_t N,
     const int64_t ldb,
-    const int64_t transB,
     const gemm_blk_param& blk_param,
-    eT* dst);
-
-template <>
-inline void gemm_ndarray_common_outer_pack_bn<float>(
-    const float* B,
-    const int64_t K,
-    const int64_t N,
-    const int64_t ldb,
-    const int64_t transB,
-    const gemm_blk_param& blk_param,
-    float* dst)
+    eT* dst)
 {
-    const int64_t simd_w = 4;
-    const int64_t ld_dst = N_KERNEL<float>();
+    constexpr int32_t eN = 128 / 8 / sizeof(eT);
+    typedef typename DT<eT, eN>::vecDT vecType;
 
-    if (!transB) {
-        for (int64_t n_base = 0; n_base < N; n_base += N_KERNEL<float>()) {
-            const int64_t n_eff = min(N - n_base, N_KERNEL<float>());
-            const float* p_src  = B + n_base;
-            float* p_dst        = dst + n_base * blk_param.k_blk;
+    const int64_t simd_w = sizeof(vecType) / sizeof(eT);
+    const int64_t ld_dst = N_KERNEL<eT>();
 
-            const int64_t prefetch_line = 1;
-            const float* p_src_next     = p_src + prefetch_line * ldb;
+    for (int64_t n_base = 0; n_base < N; n_base += N_KERNEL<eT>()) {
+        const int64_t n_eff = min(N - n_base, N_KERNEL<eT>());
+        const eT* p_src     = B + n_base;
+        eT* p_dst           = dst + n_base * blk_param.k_blk;
 
-            if (n_eff == N_KERNEL<float>()) {
-                for (int64_t k = 0; k < K; k++) {
-                    prefetch_l1(p_src_next + k * ld_dst);
-                    vst1q_f32(p_dst + k * ld_dst + simd_w * 0, vld1q_f32(p_src + k * ldb + simd_w * 0));
-                    vst1q_f32(p_dst + k * ld_dst + simd_w * 1, vld1q_f32(p_src + k * ldb + simd_w * 1));
-                    vst1q_f32(p_dst + k * ld_dst + simd_w * 2, vld1q_f32(p_src + k * ldb + simd_w * 2));
+        const int64_t prefetch_line = 1;
+        const eT* p_src_next        = p_src + prefetch_line * ldb;
+
+        if (n_eff == N_KERNEL<eT>()) {
+            for (int64_t k = 0; k < K; k++) {
+                prefetch_l1(p_src_next + k * ld_dst);
+                vst<eT, eN>(p_dst + k * ld_dst + simd_w * 0, vld<eT, eN>(p_src + k * ldb + simd_w * 0));
+                vst<eT, eN>(p_dst + k * ld_dst + simd_w * 1, vld<eT, eN>(p_src + k * ldb + simd_w * 1));
+                vst<eT, eN>(p_dst + k * ld_dst + simd_w * 2, vld<eT, eN>(p_src + k * ldb + simd_w * 2));
+            }
+        } else {
+            for (int64_t k = 0; k < K; k++) {
+                prefetch_l1(p_src_next + k * ld_dst);
+                int64_t n = 0;
+                for (; n + simd_w <= n_eff; n += simd_w) {
+                    vst<eT, eN>(p_dst + k * ld_dst + n, vld<eT, eN>(p_src + k * ldb + n));
                 }
-            } else {
-                for (int64_t k = 0; k < K; k++) {
-                    prefetch_l1(p_src_next + k * ld_dst);
-                    int64_t n = 0;
-                    for (; n + simd_w <= n_eff; n += simd_w) {
-                        vst1q_f32(p_dst + k * ld_dst + n, vld1q_f32(p_src + k * ldb + n));
-                    }
-                    for (; n < n_eff; n++) {
-                        p_dst[k * ld_dst + n] = p_src[k * ldb + n];
-                    }
+                for (; n < n_eff; n++) {
+                    p_dst[k * ld_dst + n] = p_src[k * ldb + n];
                 }
             }
         }
     }
 }
 
-template <>
-inline void gemm_ndarray_common_outer_pack_bn<__fp16>(
-    const __fp16* B,
+template <typename eT>
+inline void gemm_ndarray_common_outer_pack_bt2bn(
+    const eT* B,
     const int64_t K,
     const int64_t N,
     const int64_t ldb,
-    const int64_t transB,
     const gemm_blk_param& blk_param,
-    __fp16* dst)
+    eT* dst)
 {
-    const int64_t simd_w = 8;
-    const int64_t ld_dst = N_KERNEL<__fp16>();
+    const int64_t ld_dst = N_KERNEL<eT>();
 
-    if (!transB) {
-        for (int64_t n_base = 0; n_base < N; n_base += N_KERNEL<__fp16>()) {
-            const int64_t n_eff = min(N - n_base, N_KERNEL<__fp16>());
-            const __fp16* p_src = B + n_base;
-            __fp16* p_dst       = dst + n_base * blk_param.k_blk;
+    for (int64_t n_base = 0; n_base < N; n_base += N_KERNEL<eT>()) {
+        const int64_t n_eff = min(N - n_base, N_KERNEL<eT>());
+        const eT* p_src     = B + n_base * ldb;
+        eT* p_dst           = dst + n_base * blk_param.k_blk;
 
-            const int64_t prefetch_line = 1;
-            const __fp16* p_src_next    = p_src + prefetch_line * ldb;
+        for (int64_t n = 0; n < n_eff; n++) {
+            for (int64_t k = 0; k < K; k++) {
+                p_dst[k * ld_dst + n] = p_src[n * ldb + k];
+            }
+        }
+    }
+}
 
-            if (n_eff == N_KERNEL<__fp16>()) {
-                for (int64_t k = 0; k < K; k++) {
-                    prefetch_l1(p_src_next + k * ld_dst);
-                    vst1q_f16(p_dst + k * ld_dst + simd_w * 0, vld1q_f16(p_src + k * ldb + simd_w * 0));
-                    vst1q_f16(p_dst + k * ld_dst + simd_w * 1, vld1q_f16(p_src + k * ldb + simd_w * 1));
-                    vst1q_f16(p_dst + k * ld_dst + simd_w * 2, vld1q_f16(p_src + k * ldb + simd_w * 2));
-                }
-            } else {
-                for (int64_t k = 0; k < K; k++) {
-                    prefetch_l1(p_src_next + k * ld_dst);
-                    int64_t n = 0;
-                    for (; n + simd_w <= n_eff; n += simd_w) {
-                        vst1q_f16(p_dst + k * ld_dst + n, vld1q_f16(p_src + k * ldb + n));
-                    }
-                    for (; n < n_eff; n++) {
-                        p_dst[k * ld_dst + n] = p_src[k * ldb + n];
-                    }
-                }
+template <>
+inline void gemm_ndarray_common_outer_pack_bt2bn<float>(
+    const float* B,
+    const int64_t K,
+    const int64_t N,
+    const int64_t ldb,
+    const gemm_blk_param& blk_param,
+    float* dst)
+{
+    const int64_t simd_w = 4;
+    const int64_t ld_dst = N_KERNEL<float>();
+
+    for (int64_t n_base = 0; n_base < N; n_base += N_KERNEL<float>()) {
+        const int64_t n_eff = min(N - n_base, N_KERNEL<float>());
+        const float* p_src  = B + n_base * ldb;
+        float* p_dst        = dst + n_base * blk_param.k_blk;
+
+        int64_t n = 0;
+        for (; n + simd_w <= n_eff; n += simd_w) {
+            const float* p_src_0 = p_src + (n + 0) * ldb;
+            const float* p_src_1 = p_src + (n + 1) * ldb;
+            const float* p_src_2 = p_src + (n + 2) * ldb;
+            const float* p_src_3 = p_src + (n + 3) * ldb;
+
+            const float* p_src_4 = p_src + (n + 4) * ldb;
+            const float* p_src_5 = p_src + (n + 5) * ldb;
+            const float* p_src_6 = p_src + (n + 6) * ldb;
+            const float* p_src_7 = p_src + (n + 7) * ldb;
+
+            int64_t k = 0;
+            for (; k + simd_w <= K; k += simd_w) {
+                prefetch_l1(p_src_4 + k);
+                prefetch_l1(p_src_5 + k);
+                prefetch_l1(p_src_6 + k);
+                prefetch_l1(p_src_7 + k);
+
+                float32x4_t v0 = vld1q_f32(p_src_0 + k);
+                float32x4_t v1 = vld1q_f32(p_src_1 + k);
+                float32x4_t v2 = vld1q_f32(p_src_2 + k);
+                float32x4_t v3 = vld1q_f32(p_src_3 + k);
+
+                transpose_4x4_32bit(v0, v1, v2, v3);
+
+                vst1q_f32(p_dst + (k + 0) * ld_dst + n, v0);
+                vst1q_f32(p_dst + (k + 1) * ld_dst + n, v1);
+                vst1q_f32(p_dst + (k + 2) * ld_dst + n, v2);
+                vst1q_f32(p_dst + (k + 3) * ld_dst + n, v3);
+            }
+            for (; k < K; k++) {
+                p_dst[k * ld_dst + n + 0] = p_src_0[k];
+                p_dst[k * ld_dst + n + 1] = p_src_1[k];
+                p_dst[k * ld_dst + n + 2] = p_src_2[k];
+                p_dst[k * ld_dst + n + 3] = p_src_3[k];
+            }
+        }
+        for (; n < n_eff; n++) {
+            for (int64_t k = 0; k < K; k++) {
+                p_dst[k * ld_dst + n] = p_src[n * ldb + k];
             }
         }
     }
@@ -511,11 +584,11 @@ inline void gemm_ndarray_common_outer_store_dst(
 
 template <typename eT>
 inline gemm_blk_param gemm_ndarray_common_outer_generate_blk_param(
-    const int64_t M, 
-    const int64_t N, 
-    const int64_t K, 
-    const int64_t num_threads) {
-
+    const int64_t M,
+    const int64_t N,
+    const int64_t K,
+    const int64_t num_threads)
+{
     gemm_blk_param blk_param;
     // basic blocking param
     if (std::is_same<eT, float>::value) {
@@ -536,12 +609,12 @@ inline gemm_blk_param gemm_ndarray_common_outer_generate_blk_param(
         return blk_param;
     }
 
-    blk_param.m_blk = 256;  // 512 is too large for multi-thread
+    blk_param.m_blk = 256; // 512 is too large for multi-thread
 
     // TODO: not a best task divide strategy
     int64_t m_task_num = div_up(M, blk_param.m_blk);
     int64_t n_task_num = div_up(N, blk_param.n_blk);
-    while (m_task_num * n_task_num < num_threads * 4) {
+    while (m_task_num * n_task_num < num_threads * 3) {
         const bool m_can_divide = blk_param.m_blk >= 2 * M_KERNEL<eT>();
         const bool n_can_divide = blk_param.n_blk >= 2 * N_KERNEL<eT>();
         if (m_task_num <= n_task_num && m_can_divide) {
@@ -558,11 +631,6 @@ inline gemm_blk_param gemm_ndarray_common_outer_generate_blk_param(
         m_task_num = div_up(M, blk_param.m_blk);
         n_task_num = div_up(N, blk_param.n_blk);
     }
-
-    m_task_num = div_up(M, blk_param.m_blk);
-    n_task_num = div_up(N, blk_param.n_blk);
-
-    // fprintf(stderr, "M=%ld, N=%ld, K=%ld, m_blk=%ld, n_blk=%ld, k_blk=%ld, m_task_num=%ld, n_task_num=%ld\n", M, N, K, blk_param.m_blk, blk_param.n_blk, blk_param.k_blk, m_task_num, n_task_num);
 
     return blk_param;
 }
@@ -608,14 +676,22 @@ ppl::common::RetCode gemm_ndarray_common_outer(
             const int64_t n_eff = min(N - n, blk_param.n_blk);
             const eT* p_src_a   = transA ? A + m : A + m * lda;
             if (last_pack_a_ptr[thread_id] != p_src_a) {
-                gemm_ndarray_common_outer_pack_at<eT>(p_src_a, m_eff, K, lda, transA, blk_param, temp_buffer_a);
+                if (!transA) {
+                    gemm_ndarray_common_outer_pack_an2at<eT>(p_src_a, m_eff, K, lda, blk_param, temp_buffer_a);
+                } else {
+                    gemm_ndarray_common_outer_pack_at2at<eT>(p_src_a, m_eff, K, lda, blk_param, temp_buffer_a);
+                }
                 last_pack_a_ptr[thread_id] = p_src_a;
             }
 
             for (int64_t kk = 0; kk < K; kk += blk_param.k_blk) {
                 const int64_t kk_eff = min(K - kk, blk_param.k_blk);
                 const eT* p_src_b    = transB ? B + n * ldb + kk : B + kk * ldb + n;
-                gemm_ndarray_common_outer_pack_bn<eT>(p_src_b, kk_eff, n_eff, ldb, transB, blk_param, temp_buffer_b);
+                if (!transB) {
+                    gemm_ndarray_common_outer_pack_bn2bn<eT>(p_src_b, kk_eff, n_eff, ldb, blk_param, temp_buffer_b);
+                } else {
+                    gemm_ndarray_common_outer_pack_bt2bn<eT>(p_src_b, kk_eff, n_eff, ldb, blk_param, temp_buffer_b);
+                }
 
                 const int64_t init_t = kk == 0 ? 0 : 1;
 
