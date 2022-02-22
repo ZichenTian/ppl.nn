@@ -554,29 +554,31 @@ inline void gemm_ndarray_common_outer_store_dst(
             }
         }
     } else if (c_type == gemm_C_type::VECTOR_W) {
+        const eT* ptr_c      = C + n_offset;
         const vecType v_beta = vdup_n<eT, eN>(beta);
         for (int64_t m = 0; m < M; m++) {
             int64_t n = 0;
             for (; n + simd_w <= N; n += simd_w) {
                 vecType v_src = vld<eT, eN>(src + m * ld_src + n);
-                vecType v_c   = vld<eT, eN>(C + n);
+                vecType v_c   = vld<eT, eN>(ptr_c + n);
                 vst<eT, eN>(dst + m * ld_dst + n, v_src * v_alpha + v_c * v_beta);
             }
             for (; n < N; n++) {
-                dst[m * ld_dst + n] = src[m * ld_src + n] * alpha + C[n] * beta;
+                dst[m * ld_dst + n] = src[m * ld_src + n] * alpha + ptr_c[n] * beta;
             }
         }
     } else if (c_type == gemm_C_type::MATRIX) {
+        const eT* ptr_c      = C + m_offset * ldc + n_offset;
         const vecType v_beta = vdup_n<eT, eN>(beta);
         for (int64_t m = 0; m < M; m++) {
             int64_t n = 0;
             for (; n + simd_w <= N; n += simd_w) {
                 vecType v_src = vld<eT, eN>(src + m * ld_src + n);
-                vecType v_c   = vld<eT, eN>(C + m * ldc + n);
+                vecType v_c   = vld<eT, eN>(ptr_c + m * ldc + n);
                 vst<eT, eN>(dst + m * ld_dst + n, v_src * v_alpha + v_c * v_beta);
             }
             for (; n < N; n++) {
-                dst[m * ld_dst + n] = src[m * ld_src + n] * alpha + C[m * ldc + n] * beta;
+                dst[m * ld_dst + n] = src[m * ld_src + n] * alpha + ptr_c[m * ldc + n] * beta;
             }
         }
     }
@@ -609,7 +611,7 @@ inline gemm_blk_param gemm_ndarray_common_outer_generate_blk_param(
         return blk_param;
     }
 
-    blk_param.m_blk = 256; // 512 is too large for multi-thread
+    blk_param.m_blk = min(blk_param.m_blk, (int64_t)256); // 512 is too large for multi-thread
 
     // TODO: not a best task divide strategy
     int64_t m_task_num = div_up(M, blk_param.m_blk);
@@ -631,6 +633,9 @@ inline gemm_blk_param gemm_ndarray_common_outer_generate_blk_param(
         m_task_num = div_up(M, blk_param.m_blk);
         n_task_num = div_up(N, blk_param.n_blk);
     }
+
+    blk_param.m_blk = round_up(blk_param.m_blk, M_KERNEL<eT>());
+    blk_param.n_blk = round_up(blk_param.n_blk, N_KERNEL<eT>());
 
     return blk_param;
 }

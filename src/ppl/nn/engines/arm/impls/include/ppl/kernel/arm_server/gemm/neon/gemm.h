@@ -45,12 +45,6 @@ public:
 };
 typedef uint32_t gemm_C_type_t;
 
-uint64_t gemm_ndarray_calc_buffer_size(
-    const ppl::common::datatype_t data_type,
-    const int64_t M,
-    const int64_t N,
-    const int64_t K);
-
 ppl::common::RetCode gemm_ndarray(
     const void *A,
     const void *B,
@@ -69,58 +63,6 @@ ppl::common::RetCode gemm_ndarray(
     const int64_t ldy,
     const gemm_C_type_t c_type,
     void *Y);
-
-#ifdef PPLNN_USE_ARMV8_2_FP16
-size_t ppl_arm_server_kernel_fp16_gemm_get_buffer_size(
-    const int64_t sgemm_m1,
-    const int64_t sgemm_n1);
-
-ppl::common::RetCode gemm_fp16(
-    const __fp16 *a,
-    const __fp16 *b,
-    const __fp16 *c,
-    __fp16 *y,
-    __fp16 *tmp_buffer,
-    const int64_t M,
-    const int64_t N,
-    const int64_t K,
-    const int64_t lda,
-    const int64_t ldb,
-    const int64_t ldc,
-    const int64_t ldy,
-    const __fp16 alpha,
-    const __fp16 beta,
-    const int64_t sgemm_m1,
-    const int64_t sgemm_n1,
-    const int64_t sgemm_k1,
-    const int64_t sgemm_m3,
-    const int64_t sgemm_k3);
-#endif
-
-size_t ppl_arm_server_kernel_fp32_gemm_get_buffer_size(
-    const int64_t sgemm_m1,
-    const int64_t sgemm_n1);
-
-ppl::common::RetCode gemm_fp32(
-    const float *a,
-    const float *b,
-    const float *c,
-    float *y,
-    float *tmp_buffer,
-    const int64_t M,
-    const int64_t N,
-    const int64_t K,
-    const int64_t lda,
-    const int64_t ldb,
-    const int64_t ldc,
-    const int64_t ldy,
-    const float alpha,
-    const float beta,
-    const int64_t sgemm_m1,
-    const int64_t sgemm_n1,
-    const int64_t sgemm_k1,
-    const int64_t sgemm_m3,
-    const int64_t sgemm_k3);
 
 }}}}; // namespace ppl::kernel::arm_server::neon
 

@@ -40,12 +40,6 @@ private:
 private:
     const ppl::nn::common::GemmParam* param_ = nullptr;
     bool gemm_fuse_relu_ = false;
-
-    int64_t sgemm_m1;
-    int64_t sgemm_n1;
-    int64_t sgemm_k1;
-    int64_t sgemm_m3;
-    int64_t sgemm_k3;
 };
 
 }}} // namespace ppl::nn::arm
