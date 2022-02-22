@@ -17,6 +17,7 @@
 
 #include <iostream>
 #include <chrono>
+#include <random>
 
 #include "ppl/kernel/arm_server/gemm/neon/gemm.h"
 #include "ppl/kernel/arm_server/common/internal_include.h"
@@ -30,6 +31,8 @@ void sgemm_ref(
     const int64_t lda,
     const int64_t ldb,
     const int64_t ldc,
+    const int64_t transA, 
+    const int64_t transB, 
     float* C)
 {
     PRAGMA_OMP_PARALLEL_FOR_COLLAPSE(2)
@@ -37,7 +40,9 @@ void sgemm_ref(
         for (int64_t n = 0; n < N; n++) {
             float sum = 0;
             for (int64_t k = 0; k < K; k++) {
-                sum += A[m * lda + k] * B[k * ldb + n];
+                const float a_val = transA ? A[k * lda + m] : A[m * lda + k];
+                const float b_val = transB ? B[n * ldb + k] : B[k * ldb + n];
+                sum += a_val * b_val;
             }
             C[m * ldc + n] = sum;
         }
@@ -53,6 +58,8 @@ void hgemm_ref(
     const int64_t lda,
     const int64_t ldb,
     const int64_t ldc,
+    const int64_t transA, 
+    const int64_t transB, 
     __fp16* C)
 {
     PRAGMA_OMP_PARALLEL_FOR_COLLAPSE(2)
@@ -60,17 +67,28 @@ void hgemm_ref(
         for (int64_t n = 0; n < N; n++) {
             __fp16 sum = 0;
             for (int64_t k = 0; k < K; k++) {
-                sum += A[m * lda + k] * B[k * ldb + n];
+                const __fp16 a_val = transA ? A[k * lda + m] : A[m * lda + k];
+                const __fp16 b_val = transB ? B[n * ldb + k] : B[k * ldb + n];
+                sum += a_val * b_val;
             }
             C[m * ldc + n] = sum;
         }
     }
 }
 
+inline bool fp_diff(float a, float b) {
+    if (fabs(a - b) > 5e-2) {
+        return false;
+    }
+    return true;
+}
+
 void test_sgemm(
     const int64_t M,
     const int64_t N,
     const int64_t K,
+    const int64_t transA, 
+    const int64_t transB, 
     const bool diff = true)
 {
     float* A     = nullptr;
@@ -81,6 +99,10 @@ void test_sgemm(
     const int64_t A_len = M * K;
     const int64_t B_len = K * N;
     const int64_t C_len = M * N;
+    const int64_t lda = transA ? M : K;
+    const int64_t ldb = transB ? K : N;
+    const int64_t ldc = 0;
+    const int64_t ldy = N;
 
     A     = (float*)aligned_alloc(64, A_len * sizeof(float));
     B     = (float*)aligned_alloc(64, B_len * sizeof(float));
@@ -105,11 +127,14 @@ void test_sgemm(
         return;
     }
 
+    std::default_random_engine eng;
+    std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
+
     for (int64_t i = 0; i < A_len; i++) {
-        A[i] = i & 0x3;
+        A[i] = dis(eng) * 100;
     }
     for (int64_t i = 0; i < B_len; i++) {
-        B[i] = i & 0x7;
+        B[i] = dis(eng);
     }
     for (int64_t i = 0; i < temp_size / sizeof(float); i++) {
         temp[i] = 0;
@@ -120,14 +145,14 @@ void test_sgemm(
     }
 
     if (diff) {
-        sgemm_ref(A, B, M, N, K, K, N, N, C_ref);
+        sgemm_ref(A, B, M, N, K, lda, ldb, ldy, transA, transB, C_ref);
     }
 
     auto start = std::chrono::system_clock::now();
 
     // ppl::kernel::arm_server::neon::gemm_fp32(A, B, nullptr, C, temp, M, N, K, K, N, 0, N, 1, 0, sgemm_m1, sgemm_n1, sgemm_k1, sgemm_m3, sgemm_k3);
     // sgemm_algo1(A, B, K, N, M, N, K, N, temp, C);
-    ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT32, M, N, K, K, N, 0, 0, 0, 1.0f, 0, N, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, C);
+    ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT32, M, N, K, lda, ldb, ldc, transA, transB, 1.0f, 0, ldy, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, C);
 
     auto end       = std::chrono::system_clock::now();
     auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -137,7 +162,7 @@ void test_sgemm(
         int64_t err_cnt               = 0;
         const int64_t err_verbose_num = 100;
         for (int64_t i = 0; i < C_len; i++) {
-            if (C[i] != C_ref[i]) {
+            if (!fp_diff(C[i], C_ref[i])) {
                 err_cnt++;
                 if (err_cnt <= err_verbose_num) {
                     fprintf(stderr, "error at %d: %f vs %f\n", i, C[i], C_ref[i]);
@@ -152,12 +177,14 @@ void test_sgemm(
         }
     }
 
+    ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT32, M, N, K, lda, ldb, ldc, transA, transB, 1.0f, 0, ldy, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, C);
+
     const int64_t loops = std::max(int32_t(1.0f / time), 1);
     start               = std::chrono::system_clock::now();
     for (int64_t i = 0; i < loops; i++) {
         // sgemm_algo1(A, B, K, N, M, N, K, N, temp, C);
         // ppl::kernel::arm_server::neon::gemm_fp32(A, B, nullptr, C, temp, M, N, K, K, N, 0, N, 1, 0, sgemm_m1, sgemm_n1, sgemm_k1, sgemm_m3, sgemm_k3);
-        ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT32, M, N, K, K, N, 0, 0, 0, 1.0f, 0, N, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, C);
+        ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT32, M, N, K, lda, ldb, ldc, transA, transB, 1.0f, 0, ldy, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, C);
     }
     end       = std::chrono::system_clock::now();
     time_diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -181,6 +208,8 @@ void test_hgemm(
     const int64_t M,
     const int64_t N,
     const int64_t K,
+    const int64_t transA, 
+    const int64_t transB, 
     const bool diff = true)
 {
     __fp16* A     = nullptr;
@@ -191,6 +220,10 @@ void test_hgemm(
     const int64_t A_len = M * K;
     const int64_t B_len = K * N;
     const int64_t C_len = M * N;
+    const int64_t lda = transA ? M : K;
+    const int64_t ldb = transB ? K : N;
+    const int64_t ldc = 0;
+    const int64_t ldy = N;
 
     A     = (__fp16*)aligned_alloc(64, A_len * sizeof(__fp16));
     B     = (__fp16*)aligned_alloc(64, B_len * sizeof(__fp16));
@@ -215,11 +248,14 @@ void test_hgemm(
         return;
     }
 
+    std::default_random_engine eng;
+    std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
+
     for (int64_t i = 0; i < A_len; i++) {
-        A[i] = i & 0x3;
+        A[i] = int(dis(eng) * 100);
     }
     for (int64_t i = 0; i < B_len; i++) {
-        B[i] = i & 0x7;
+        B[i] = int(dis(eng) * 100);
     }
     for (int64_t i = 0; i < temp_size / sizeof(__fp16); i++) {
         temp[i] = 0;
@@ -230,14 +266,14 @@ void test_hgemm(
     }
 
     if (diff) {
-        hgemm_ref(A, B, M, N, K, K, N, N, C_ref);
+        hgemm_ref(A, B, M, N, K, lda, ldb, ldy, transA, transB, C_ref);
     }
 
     auto start = std::chrono::system_clock::now();
 
     // ppl::kernel::arm_server::neon::gemm_fp32(A, B, nullptr, C, temp, M, N, K, K, N, 0, N, 1, 0, sgemm_m1, sgemm_n1, sgemm_k1, sgemm_m3, sgemm_k3);
     // sgemm_algo1(A, B, K, N, M, N, K, N, temp, C);
-    ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT16, M, N, K, K, N, 0, 0, 0, 1.0f, 0, N, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, C);
+    ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT16, M, N, K, lda, ldb, ldc, transA, transB, 1.0f, 0, ldy, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, C);
 
     auto end       = std::chrono::system_clock::now();
     auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -247,7 +283,7 @@ void test_hgemm(
         int64_t err_cnt               = 0;
         const int64_t err_verbose_num = 100;
         for (int64_t i = 0; i < C_len; i++) {
-            if (C[i] != C_ref[i]) {
+            if (!fp_diff(C[i], C_ref[i])) {
                 err_cnt++;
                 if (err_cnt <= err_verbose_num) {
                     fprintf(stderr, "error at %d: %f vs %f\n", i, C[i], C_ref[i]);
@@ -262,12 +298,14 @@ void test_hgemm(
         }
     }
 
+    ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT16, M, N, K, lda, ldb, ldc, transA, transB, 1.0f, 0, ldy, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, C);
+
     const int64_t loops = std::max(int32_t(1.0f / time), 1);
     start               = std::chrono::system_clock::now();
     for (int64_t i = 0; i < loops; i++) {
         // sgemm_algo1(A, B, K, N, M, N, K, N, temp, C);
         // ppl::kernel::arm_server::neon::gemm_fp32(A, B, nullptr, C, temp, M, N, K, K, N, 0, N, 1, 0, sgemm_m1, sgemm_n1, sgemm_k1, sgemm_m3, sgemm_k3);
-        ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT16, M, N, K, K, N, 0, 0, 0, 1.0f, 0, N, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, C);
+        ppl::kernel::arm_server::neon::gemm_ndarray(A, B, nullptr, ppl::common::DATATYPE_FLOAT16, M, N, K, lda, ldb, ldc, transA, transB, 1.0f, 0, ldy, ppl::kernel::arm_server::neon::gemm_C_type::EMPTY, C);
     }
     end       = std::chrono::system_clock::now();
     time_diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -289,14 +327,21 @@ void test_hgemm(
 
 int main(int argc, char* argv[])
 {
-    const bool diff = false;
-    test_sgemm(1024, 1152, 1024, diff);
-    test_sgemm(1024, 1024, 1024, diff);
-    test_sgemm(255, 127, 33, diff);
-    test_sgemm(5, 257, 193, diff);
-    test_hgemm(1024, 1152, 1024, diff);
-    test_hgemm(1024, 1024, 1024, diff);
-    test_hgemm(255, 127, 33, diff);
-    test_hgemm(5, 257, 193, diff);
+    const bool diff = true;
+    const int64_t transA = 0;
+    const int64_t transB = 0;
+    test_sgemm(67, 33, 65, transA, transB, diff);
+    // test_sgemm(1024, 1152, 1024, transA, transB, diff);
+    // test_sgemm(1024, 1024, 1024, transA, transB, diff);
+    // test_sgemm(1024, 256, 1024, transA, transB, diff);
+    // test_sgemm(1024, 1024, 256, transA, transB, diff);
+    // test_sgemm(255,  127, 33, transA, transB, diff);
+    // test_sgemm(5, 257, 193, transA, transB, diff);
+    // test_hgemm(1024, 1152, 1024, transA, transB, diff);
+    // test_hgemm(1024, 1024, 1024, transA, transB, diff);
+    // test_hgemm(1024, 256, 1024, transA, transB, diff);
+    // test_hgemm(1024, 1024, 256, transA, transB, diff);
+    // test_hgemm(255, 127, 33, transA, transB, diff);
+    // test_hgemm(5, 257, 193, transA, transB, diff);
     return 0;
 }
